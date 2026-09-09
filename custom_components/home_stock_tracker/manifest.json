@@ -1,0 +1,12 @@
+{
+  "domain": "home_stock_tracker",
+  "name": "Home Stock Tracker",
+  "codeowners": ["@yairabf"],
+  "config_flow": true,
+  "documentation": "https://github.com/yairabf/home-stock-tracker-ha#readme",
+  "integration_type": "service",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/yairabf/home-stock-tracker-ha/issues",
+  "single_config_entry": true,
+  "version": "0.1.0"
+}

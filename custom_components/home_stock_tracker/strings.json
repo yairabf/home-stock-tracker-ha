@@ -1,0 +1,25 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "base_url": "Home Stock Tracker URL",
+          "api_token": "Service API token"
+        }
+      },
+      "reauth_confirm": {
+        "data": {
+          "api_token": "Service API token"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to Home Stock Tracker",
+      "invalid_auth": "The service rejected the API token",
+      "invalid_url": "Enter an HTTP(S) service origin without a path"
+    },
+    "abort": {
+      "already_configured": "Home Stock Tracker is already configured"
+    }
+  }
+}
