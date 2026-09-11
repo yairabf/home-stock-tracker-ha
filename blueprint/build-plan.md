@@ -14,7 +14,7 @@
   - Confirmed as the next product direction.
   - [x] 2a. Release and versioning policy
   - [x] 2b. Automated HACS validation
-  - [ ] 2c. HACS brand assets
+  - [x] 2c. HACS brand assets
   - [ ] 2d. Installation and support documentation
 
 ## Deferred — requires explicit approval

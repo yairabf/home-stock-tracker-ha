@@ -2,16 +2,16 @@
   "status": "ready",
   "command": "complete",
   "activity": "complete",
-  "boundary": "reviewed",
-  "target": "2b. Automated HACS validation",
+  "boundary": "merged locally",
+  "target": "2c. HACS brand assets",
   "branch": "main",
   "steps": {
-    "completed": 5,
-    "total": 5,
+    "completed": 3,
+    "total": 3,
     "current": null
   },
   "verification": "passed",
-  "next_action": "Approve pushing local main to origin; then use $feature for Feature 2c.",
+  "next_action": "Approve pushing local main to origin; then use $feature for Feature 2d.",
   "quality_gates": {
     "check": "manual; skipped",
     "audit": "manual; skipped",
