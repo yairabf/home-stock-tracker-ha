@@ -1,9 +1,9 @@
 {
   "status": "ready",
-  "command": "complete",
+  "command": "feature",
   "activity": "complete",
   "boundary": "merged locally",
-  "target": "2c. HACS brand assets",
+  "target": "2d. Installation and support documentation",
   "branch": "main",
   "steps": {
     "completed": 3,
@@ -11,7 +11,7 @@
     "current": null
   },
   "verification": "passed",
-  "next_action": "Approve pushing local main to origin; then use $feature for Feature 2d.",
+  "next_action": "Push the completed local main commit to origin under the user’s separate approval.",
   "quality_gates": {
     "check": "manual; skipped",
     "audit": "manual; skipped",
@@ -25,6 +25,6 @@
     "Hassfest": "passed"
   },
   "license_commit": "93ce2a6c00d52ea635168a5ef512a52b282927e8",
-  "archive": "blueprint/history/features/02b-automated-hacs-validation.md",
+  "archive": "blueprint/history/features/02d-installation-and-support-documentation.md",
   "license_main_commit": "902c8e1ea3e64279d48df646eb2570c8bb843676"
 }

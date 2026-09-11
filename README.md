@@ -2,7 +2,20 @@
 
 A read-only Home Assistant custom integration for Home Stock Tracker. It
 exposes pending groceries, tracked inventory, and actionable low-stock
-recommendations as coordinator-backed sensors.
+recommendations as Home Assistant sensors.
+
+## Prerequisites
+
+- A running Home Assistant instance with [HACS](https://hacs.xyz/) installed.
+- A reachable Home Stock Tracker service and its bearer token. Home Assistant
+  must be able to reach the service over its network.
+- The service's HTTP or HTTPS origin, for example
+  `http://inventory.local:3000`. Do not include an API path, query string, or
+  fragment. Use `localhost` only when Home Assistant and the service share the
+  same network namespace.
+
+Keep the bearer token private. Do not put it in YAML, dashboards, automation
+traces, issue reports, or screenshots.
 
 ## Install with HACS
 
@@ -13,12 +26,12 @@ recommendations as coordinator-backed sensors.
 3. Download **Home Stock Tracker HA** from HACS and restart Home Assistant.
 4. Open **Settings > Devices & services > Add integration**, then select
    **Home Stock Tracker**.
-5. Enter the Home Stock Tracker service origin, such as
-   `http://inventory.local:3000`, and its service bearer token.
+5. Enter the Home Stock Tracker service origin and its bearer token.
 
-The URL must be an HTTP or HTTPS origin without an API path. Do not use
-`localhost` unless Home Assistant runs in the same network namespace as the
-service.
+The integration validates both values during setup. It supports one configured
+Home Stock Tracker service; adding an origin already configured is rejected.
+
+## What the integration provides
 
 ## Entities
 
@@ -28,10 +41,13 @@ service.
 | `sensor.tracked_inventory` | Current plus uncertain inventory count | `current`, `uncertain` |
 | `sensor.low_stock_recommendations` | Actionable recommendation count | `recommendations` |
 
-The integration polls the authenticated REST API every five minutes. Successful
-empty responses show `0`; authentication, transport, non-success, or invalid
-responses make all entities unavailable. It makes authenticated `GET` requests
-only and never mutates Home Stock Tracker data or calls MCP.
+The integration polls the authenticated service every five minutes. A successful
+empty result appears as `0`. Authentication, connectivity, non-success, or
+invalid-response failures make all entities unavailable rather than showing
+stale data as current.
+
+It makes authenticated `GET` requests only. It does not modify Home Stock
+Tracker data or call MCP.
 
 ## Development
 
@@ -41,9 +57,26 @@ python3 -m venv .venv
 .venv/bin/python -m pytest -q tests
 ```
 
-## Support
+## Troubleshooting and support
 
-Report issues at <https://github.com/yairabf/home-stock-tracker-ha/issues>.
+| Symptom | What to do |
+| --- | --- |
+| The setup form says the service URL is invalid | Enter only the service's HTTP or HTTPS origin, such as `http://inventory.local:3000`. Remove any API path, query string, or fragment. |
+| Setup cannot connect | Confirm that Home Assistant can reach the service URL over its own network and that the service is running. Recheck the host, port, scheme, and any local firewall or proxy configuration. |
+| Setup rejects authentication, or Home Assistant asks to reauthenticate | Obtain a valid Home Stock Tracker bearer token and complete the reauthentication form. The configured service URL is retained; only the replacement token is requested. |
+| Entities are unavailable | Check service reachability and the token first. Entities become unavailable for authentication, connectivity, non-success, or invalid-response failures rather than showing stale data. |
+| A second setup is rejected | The integration supports one Home Stock Tracker configuration. Use the existing integration instead of adding the same service again. |
+
+Report reproducible integration problems at
+<https://github.com/yairabf/home-stock-tracker-ha/issues>. Include the Home
+Assistant and integration versions, the steps that reproduce the problem, the
+visible error or unavailable state, and confirmation of whether the service is
+reachable from Home Assistant. **Never include** a bearer token, authorization
+header, credentialed URL, raw source records, screenshots containing those
+values, or a full diagnostic that exposes them.
+
+See the [release policy](RELEASE.md) for versioning and publication details, and
+the [Apache-2.0 license](LICENSE) for license terms.
 
 ## License
 
