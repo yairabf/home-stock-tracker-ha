@@ -1,13 +1,21 @@
 {
-  "status": "running",
+  "status": "ready",
   "command": "autopilot",
   "activity": "autopilot",
   "boundary": "reviewed",
   "target": "2b. Automated HACS validation",
   "branch": "feature/automated-hacs-validation",
   "steps": {
-    "completed": 2,
+    "completed": 3,
     "total": 4,
-    "current": 3
+    "current": 4
+  },
+  "verification": "incomplete",
+  "next_action": "Authorize the additive GitHub topic update and branch push, then run $autopilot resume for hosted verification.",
+  "quality_gates": {
+    "check": "manual; skipped",
+    "audit": "manual; skipped",
+    "tryGuide": "manual; skipped",
+    "independentReview": "manual (not configured); no request"
   }
 }

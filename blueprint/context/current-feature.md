@@ -1,7 +1,7 @@
 # Feature: Automated HACS validation
 
 **From build-plan:** feature 2b
-**Status:** in progress
+**Status:** verification incomplete
 **Branch:** `feature/automated-hacs-validation`
 
 ## Goal
@@ -62,7 +62,7 @@ and pushing remain outside that authorization.
   each other; the HACS job uses the event repository, requires no custom secret,
   and propagates validation failure; the brands exception names Feature 2c in
   an adjacent comment and the required topic update is ready for review.
-- [ ] **Step 3 - Connect the release gate** - replace the future
+- [x] **Step 3 - Connect the release gate** - replace the future
   Feature 2b placeholder in `RELEASE.md` with the workflow/check names, run and
   failure-inspection instructions, and the temporary exception. *Done when:*
   the release checklist requires successful HACS and Hassfest checks for the
@@ -185,6 +185,21 @@ No service API, stored config-entry, or sensor-data contract changes.
   ```
 
   No hosted repository settings have been changed by this Autopilot run.
+- Step 3: `RELEASE.md` now names both jobs, requires passing checks on the
+  candidate's branch-push run, and explains prerequisites, failure inspection,
+  reruns, and the brands exception. Self-review found no actionable defect in
+  the workflow or documentation. `git diff --check` passed; the earlier
+  **11-passed** regression result still applies because no runtime code, tests,
+  dependencies, or integration metadata changed afterward.
+- Regular gates: Check, Audit, and Try guide are all `manual` and were not run
+  automatically. Independent review is not configured (effective `manual`);
+  no reviewer/model was selected and no receipt exists. The findings ledger
+  contains no open or fixed P0/P1 findings.
+- Step 4 remains pending: hosted topics and branch publication require separate
+  authorization under Autopilot. No hosted workflow run or candidate revision
+  has been verified. Next actions after authorization are the additive topic
+  command above, `git push -u origin feature/automated-hacs-validation`, and
+  inspection of the resulting **Validate** run before marking this verified.
 
 ## Notes for the AI
 
@@ -195,8 +210,8 @@ No service API, stored config-entry, or sensor-data contract changes.
 - Planning inspection found no `.github/` directory. The public repository has
   a description and enabled issues but no topics as of 2026-09-11. Topics are a
   required prerequisite, not grounds for ignoring the check.
-- `RELEASE.md` and the archived Feature 2a spec resolve the overview's stale
-  release-policy TODO. Use that established policy without changing the plans.
+- `RELEASE.md` and the archived Feature 2a spec define the established release
+  policy. The overview now reflects its completion; the plans are unchanged.
 - Keep the hosted topic update explicit in the implementation review. Prepare
   local changes before any approval needed for external actions. Do not create
   releases, tags, or outbound comments as part of validation.
