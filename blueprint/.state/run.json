@@ -1,27 +1,30 @@
 {
-  "status": "running",
+  "status": "ready",
   "command": "complete",
   "activity": "complete",
   "boundary": "reviewed",
   "target": "2b. Automated HACS validation",
   "branch": "feature/automated-hacs-validation",
   "steps": {
-    "completed": 4,
+    "completed": 5,
     "total": 5,
-    "current": 5
+    "current": null
   },
-  "verification": "incomplete",
-  "next_action": "Push the approved licensing repair and inspect hosted validation and repository license detection.",
+  "verification": "passed",
+  "next_action": "Review and approve the local squash merge of Feature 2b into main.",
   "quality_gates": {
     "check": "manual; skipped",
     "audit": "manual; skipped",
     "tryGuide": "manual; skipped",
     "independentReview": "manual (not configured); no request"
   },
-  "hosted_run": "https://github.com/yairabf/home-stock-tracker-ha/actions/runs/34589933491",
-  "hosted_revision": "d75b4533e71cfc3f0c7757e6499c8671e6797a05",
+  "hosted_run": "https://github.com/yairabf/home-stock-tracker-ha/actions/runs/34590728188",
+  "hosted_revision": "c0e8fc69cadd91b884294d9562c5e49807116856",
   "hosted_results": {
-    "Hassfest": "passed",
-    "HACS": "failed: repository has no license"
-  }
+    "HACS": "passed",
+    "Hassfest": "passed"
+  },
+  "license_commit": "93ce2a6c00d52ea635168a5ef512a52b282927e8",
+  "archive": "blueprint/history/features/02b-automated-hacs-validation.md",
+  "license_main_commit": "902c8e1ea3e64279d48df646eb2570c8bb843676"
 }

@@ -78,8 +78,10 @@ independently:
 
 The repository must be public and unarchived, have a description and topics,
 have issues enabled, and have an OSI-approved license recognized by GitHub.
-This repository uses [Apache-2.0](LICENSE). Use the topics `home-assistant`,
-`hacs`, and `custom-integration`, preserving any other existing topics. Missing topics or
+This repository uses [Apache-2.0](LICENSE). GitHub must recognize the license
+on the default branch before HACS's repository-level license check can pass
+for feature branches. Use the topics `home-assistant`, `hacs`, and
+`custom-integration`, preserving any other existing topics. Missing topics or
 other unmet requirements must be corrected before expecting HACS to pass.
 
 The sole temporary exception is HACS's `brands` check. Feature 2c supplies the
