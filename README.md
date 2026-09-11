@@ -7,8 +7,9 @@ recommendations as Home Assistant sensors.
 ## Prerequisites
 
 - A running Home Assistant instance with [HACS](https://hacs.xyz/) installed.
-- A reachable Home Stock Tracker service and its bearer token. Home Assistant
-  must be able to reach the service over its network.
+- A running, reachable [Home Stock Tracker service](https://github.com/yairabf/home-stock-tracker)
+  and its bearer token. Install and start this base service before configuring
+  the integration; Home Assistant must be able to reach it over its network.
 - The service's HTTP or HTTPS origin, for example
   `http://inventory.local:3000`. Do not include an API path, query string, or
   fragment. Use `localhost` only when Home Assistant and the service share the
@@ -16,6 +17,63 @@ recommendations as Home Assistant sensors.
 
 Keep the bearer token private. Do not put it in YAML, dashboards, automation
 traces, issue reports, or screenshots.
+
+## Prepare the Home Stock Tracker connection
+
+This integration connects to the already-running Home Stock Tracker server. It
+needs two values from that server:
+
+- **Home Stock Tracker URL**: the server origin Home Assistant can reach, such
+  as `http://inventory.local:3000`. This is not an API route: do not append
+  `/api/v1`, `/health`, or a trailing path.
+- **API token**: the Home Stock Tracker server's `API_AUTH_TOKEN` value. This
+  is a bearer token for the server's protected REST API; it is not a Home
+  Assistant long-lived access token, a HACS token, or an OpenAI API key.
+
+### 1. Install and run the base service
+
+Follow the [Home Stock Tracker setup and deployment
+guide](https://github.com/yairabf/home-stock-tracker#quickstart) on the machine
+that will host the service. Configure it so that Home Assistant can reach its
+HTTP or HTTPS origin over the network, then confirm that its `/health` and
+`/ready` endpoints are successful.
+
+### 2. Create the server API token
+
+On the machine hosting Home Stock Tracker, generate a long random token:
+
+```bash
+openssl rand -hex 32
+```
+
+Set the generated value as `API_AUTH_TOKEN` in the base service's `.env` file
+(or the equivalent environment configuration used for its deployment), then
+restart the base service. For example:
+
+```dotenv
+API_AUTH_TOKEN="paste-the-generated-token-here"
+```
+
+`API_AUTH_TOKEN` is the exact secret the server checks for every protected API
+request. The same value—without `Bearer `—is what you enter into the Home
+Assistant integration's **API token** field. Keep it in the server's secret
+store or `.env` file and do not commit it.
+
+### 3. Verify the URL and token before adding the integration
+
+From a machine that can reach the service (ideally the Home Assistant host),
+test the authenticated endpoint using the same origin and token:
+
+```bash
+curl -sS \
+  -H "Authorization: Bearer YOUR_API_AUTH_TOKEN" \
+  http://inventory.local:3000/api/v1/grocery/items
+```
+
+A successful JSON response confirms both values. A `401` means the token does
+not match the server's current `API_AUTH_TOKEN`; a connection error means Home
+Assistant will not be able to reach the supplied URL. The integration performs
+this same authenticated check during setup.
 
 ## Install with HACS
 
@@ -26,7 +84,8 @@ traces, issue reports, or screenshots.
 3. Download **Home Stock Tracker HA** from HACS and restart Home Assistant.
 4. Open **Settings > Devices & services > Add integration**, then select
    **Home Stock Tracker**.
-5. Enter the Home Stock Tracker service origin and its bearer token.
+5. Enter the verified Home Stock Tracker service origin and its `API_AUTH_TOKEN`
+   value in the **API token** field.
 
 The integration validates both values during setup. It supports one configured
 Home Stock Tracker service; adding an origin already configured is rejected.
