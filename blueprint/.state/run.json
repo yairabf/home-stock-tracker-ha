@@ -1,17 +1,17 @@
 {
-  "status": "ready",
-  "command": "complete",
-  "activity": "complete",
-  "boundary": "reviewed",
-  "target": "2b. Automated HACS validation",
-  "branch": "main",
+  "status": "running",
+  "command": "implement",
+  "activity": "implement",
+  "boundary": "step 3",
+  "target": "2c. HACS brand assets",
+  "branch": "feature/hacs-brand-assets",
   "steps": {
-    "completed": 5,
-    "total": 5,
-    "current": null
+    "completed": 2,
+    "total": 3,
+    "current": "Step 3 - hosted validation pending authorization"
   },
-  "verification": "passed",
-  "next_action": "Approve pushing local main to origin; then use $feature for Feature 2c.",
+  "verification": "pending",
+  "next_action": "Authorize a branch push to obtain required HACS and Hassfest evidence, or leave Step 3 pending.",
   "quality_gates": {
     "check": "manual; skipped",
     "audit": "manual; skipped",

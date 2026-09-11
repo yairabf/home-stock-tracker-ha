@@ -35,5 +35,3 @@ jobs:
         with:
           category: integration
           comment: "false"
-          # Remove this exception in Feature 2c after brand assets pass validation.
-          ignore: brands
