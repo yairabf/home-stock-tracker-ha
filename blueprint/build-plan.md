@@ -11,9 +11,11 @@
 ## Next feature — requires product confirmation
 
 - [ ] 2. HACS release-quality readiness
-  - Candidate scope: release/versioning policy, HACS validation automation,
-    brand assets, and installation/support documentation.
-  - Do not start until the desired HACS publication level is confirmed.
+  - Confirmed as the next product direction.
+  - [x] 2a. Release and versioning policy
+  - [ ] 2b. Automated HACS validation
+  - [ ] 2c. HACS brand assets
+  - [ ] 2d. Installation and support documentation
 
 ## Deferred — requires explicit approval
 

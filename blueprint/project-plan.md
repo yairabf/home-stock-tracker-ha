@@ -45,9 +45,9 @@ are future delivery choices rather than current guarantees.
 
 ## Next decisions to confirm
 
-> TODO (confirm): Decide whether the next feature is HACS release-quality
-> automation (validation workflow, release process, and branding) or improved
-> dashboard/diagnostic presentation for the existing sensors.
+HACS release-quality readiness is the next product direction. Improved
+dashboard/diagnostic presentation remains a future option and is not currently
+planned.
 
 > TODO (confirm): Decide whether a future write-capable integration is desired.
 > It would require an explicit safety design and must not be bundled into the
