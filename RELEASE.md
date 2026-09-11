@@ -56,11 +56,66 @@ upgrade action in the changelog and release notes.
 
    When `.venv` is unavailable, use a prepared environment with
    `requirements-test.txt` installed and run `python3 -m pytest -q tests`.
-4. Run the HACS and Home Assistant validation automation once it is introduced
-   by Feature 2b; do not publish when those required checks fail.
+4. Push the release candidate branch and open its **Validate** workflow run in
+   GitHub Actions. Require both **Hassfest** and **HACS** to pass for the
+   candidate commit. Confirm the run's commit and the source/ref selected in
+   each job's logs; a passing check for another revision is insufficient.
+   Do not publish while a check is failed, cancelled, skipped, or pending.
 5. Create tag `vX.Y.Z` from the verified release commit and publish a GitHub
    Release for that exact tag. Do not publish credentials, tokens, or URLs that
    contain credentials.
+
+## Validation workflow
+
+[Validate](.github/workflows/validate.yml) runs on all branch pushes, pull
+requests, manual requests, and Mondays at 04:17 UTC. Its two jobs run
+independently:
+
+| Check | Validates |
+| --- | --- |
+| Hassfest | Integration metadata in the workflow's checkout using Home Assistant's official validator |
+| HACS | HACS repository requirements using the event's repository and the official HACS action |
+
+The repository must be public and unarchived, have a description and topics,
+have issues enabled, and have an OSI-approved license recognized by GitHub.
+This repository uses [Apache-2.0](LICENSE). GitHub must recognize the license
+on the default branch before HACS's repository-level license check can pass
+for feature branches. Use the topics `home-assistant`, `hacs`, and
+`custom-integration`, preserving any other existing topics. Missing topics or
+other unmet requirements must be corrected before expecting HACS to pass.
+
+The sole temporary exception is HACS's `brands` check. Feature 2c supplies the
+brand assets and removes `ignore: brands` from the workflow once validation
+accepts them. Do not add other ignores to bypass failures. Success with this
+exception does not qualify the repository for HACS default-list inclusion.
+
+To inspect a result, open the repository's **Actions > Validate**, select the
+run for the candidate branch and commit, then open **Hassfest** and **HACS** and
+their validation-step logs. Correct metadata or repository-setting failures
+and push a new candidate commit when files change. For a transient download,
+GitHub API, or runner failure, use **Re-run failed jobs** after the cause clears.
+Confirm both jobs pass for the final candidate before tagging it. Do not move
+the candidate branch during validation: HACS resolves branch content through
+GitHub, so a later branch head can differ from the workflow's checkout.
+
+Use **Run workflow** on the Actions page for an on-demand maintenance check
+once the workflow is present on the default branch. Scheduled and manual HACS
+runs can select the latest published release, or the default branch when no
+release exists. Their green results do not prove an unreleased candidate
+passed. Pull-request HACS runs check the contributor branch; Hassfest uses
+GitHub's event checkout. Use the final candidate's branch-push run as the
+release evidence.
+
+Validator references follow their upstream branches, so later maintenance runs
+may expose changed requirements. Validation requires no Home Stock Tracker
+token, live service, or custom GitHub secret. Jobs use read-only permissions,
+do not post PR comments, and do not publish a release or modify the repository.
+The local JSON checks and pytest suite above remain part of the release gate;
+passing them does not replace the hosted validators.
+
+See the [HACS action documentation](https://hacs.xyz/docs/publish/action/) and
+[Hassfest guidance](https://developers.home-assistant.io/blog/2020/04/16/hassfest/)
+for the upstream validation behavior.
 
 ## Release notes
 

@@ -1,4 +1,30 @@
 {
-  "status": "running",
-  "activity": "complete"
+  "status": "ready",
+  "command": "complete",
+  "activity": "complete",
+  "boundary": "reviewed",
+  "target": "2b. Automated HACS validation",
+  "branch": "main",
+  "steps": {
+    "completed": 5,
+    "total": 5,
+    "current": null
+  },
+  "verification": "passed",
+  "next_action": "Approve pushing local main to origin; then use $feature for Feature 2c.",
+  "quality_gates": {
+    "check": "manual; skipped",
+    "audit": "manual; skipped",
+    "tryGuide": "manual; skipped",
+    "independentReview": "manual (not configured); no request"
+  },
+  "hosted_run": "https://github.com/yairabf/home-stock-tracker-ha/actions/runs/34592084606",
+  "hosted_revision": "3329a0af047085ecba7076b8865643fa46f30813",
+  "hosted_results": {
+    "HACS": "passed",
+    "Hassfest": "passed"
+  },
+  "license_commit": "93ce2a6c00d52ea635168a5ef512a52b282927e8",
+  "archive": "blueprint/history/features/02b-automated-hacs-validation.md",
+  "license_main_commit": "902c8e1ea3e64279d48df646eb2570c8bb843676"
 }

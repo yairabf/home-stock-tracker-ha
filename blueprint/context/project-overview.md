@@ -1,6 +1,6 @@
 # Home Stock Tracker HA - Project Overview
 
-<!-- blueprint:source-hash dc007017fceae6f09655e9e691c380d3950072585d8e24d25f6235e1a0d5c366 -->
+<!-- blueprint:source-hash f08e422c0dd03bb9c1e8b996be12a5b4b85853fdceb455648931f468fd58d7b9 -->
 
 > A read-only Home Assistant custom integration for monitoring household stock
 > data from the Home Stock Tracker service.
@@ -25,10 +25,10 @@ or allowing Home Assistant to modify the source service.
    coordinated polling, availability-aware count sensors, HACS metadata, and
    automated tests.
 2. **HACS release-quality readiness** - confirmed next direction, split into:
-   - **2a. Release and versioning policy** - define the repository's release
-     contract and versioning conventions.
-   - **2b. Automated HACS validation** - validate HACS-facing repository
-     requirements in automation.
+   - **2a. Release and versioning policy** *(completed)* - the repository's
+     release contract and versioning conventions are documented.
+   - **2b. Automated HACS validation** *(completed)* - automated validation of
+     HACS repository requirements and Home Assistant integration metadata.
    - **2c. HACS brand assets** - supply the publication assets needed for the
      chosen HACS presentation.
    - **2d. Installation and support documentation** - document installation,
@@ -96,8 +96,10 @@ environment-variable deployment contract is specified.
 
 ## Open questions
 
-> TODO: Define the publication level and concrete release/versioning policy
-> while implementing Feature 2a.
+> Planning gap: the project plan still describes release policy and HACS
+> validation as future delivery choices, while the build plan marks Features
+> 2a and 2b complete. This does not establish that a release has been published;
+> brand assets and support documentation remain planned work.
 
 > TODO: Decide whether a future write-capable integration is desired; it must
 > remain outside the current read-only boundary unless separately approved.

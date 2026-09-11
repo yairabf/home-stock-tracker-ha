@@ -13,7 +13,7 @@
 - [ ] 2. HACS release-quality readiness
   - Confirmed as the next product direction.
   - [x] 2a. Release and versioning policy
-  - [ ] 2b. Automated HACS validation
+  - [x] 2b. Automated HACS validation
   - [ ] 2c. HACS brand assets
   - [ ] 2d. Installation and support documentation
 
