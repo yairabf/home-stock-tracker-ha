@@ -44,3 +44,9 @@ python3 -m venv .venv
 ## Support
 
 Report issues at <https://github.com/yairabf/home-stock-tracker-ha/issues>.
+
+## License
+
+Copyright 2026 Yair Abramovitch.
+
+Licensed under the [Apache License, Version 2.0](LICENSE).
