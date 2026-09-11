@@ -1,7 +1,7 @@
 # Feature: Automated HACS validation
 
 **From build-plan:** feature 2b
-**Status:** verification incomplete
+**Status:** in progress
 **Branch:** `feature/automated-hacs-validation`
 
 ## Goal
@@ -20,6 +20,8 @@ release. Connect these checks to the release policy established by Feature 2a.
 - Required repository topics: `home-assistant`, `hacs`, and `custom-integration`.
   Preserve any existing topics when applying these during implementation.
 - A focused update to the pre-release checklist explaining checks and failures.
+- The maintainer-approved Apache-2.0 license and a README license notice, added
+  to satisfy the hosted HACS license check.
 
 ## Out of scope
 
@@ -68,6 +70,10 @@ and pushing remain outside that authorization.
   the release checklist requires successful HACS and Hassfest checks for the
   release candidate, documents repository prerequisites and how to inspect or
   rerun failures, and the existing pytest suite and whitespace checks pass.
+- [x] **Step 3a - Add the approved license** - add the standard Apache-2.0 text
+  at root `LICENSE`, a README copyright/license notice, and the license
+  prerequisite in `RELEASE.md`. *Done when:* the license text matches the
+  official Apache-2.0 text and the README links to it; local checks pass.
 - [ ] **Step 4 - Verify hosted validation** - after local changes are reviewable,
   apply the additive repository-topic update and obtain workflow evidence
   through an authorized push. *Done when:* the repository has the required
@@ -79,6 +85,7 @@ and pushing remain outside that authorization.
 
 - `.github/workflows/validate.yml` - new validation workflow.
 - `RELEASE.md` - existing pre-release checklist and concise validation guidance.
+- `LICENSE`, `README.md` - the approved Apache-2.0 license and its notice.
 - `hacs.json`, `custom_components/home_stock_tracker/manifest.json`,
   `custom_components/home_stock_tracker/strings.json`, and
   `custom_components/home_stock_tracker/translations/en.json` - inspect;
@@ -184,7 +191,9 @@ No service API, stored config-entry, or sensor-data contract changes.
   gh repo edit yairabf/home-stock-tracker-ha --add-topic home-assistant --add-topic hacs --add-topic custom-integration
   ```
 
-  No hosted repository settings have been changed by this Autopilot run.
+  The initial Autopilot run did not change hosted settings. The user later
+  explicitly approved this topic update and the feature-branch push during
+  completion; all three topics are now present.
 - Step 3: `RELEASE.md` now names both jobs, requires passing checks on the
   candidate's branch-push run, and explains prerequisites, failure inspection,
   reruns, and the brands exception. Self-review found no actionable defect in
@@ -195,11 +204,29 @@ No service API, stored config-entry, or sensor-data contract changes.
   automatically. Independent review is not configured (effective `manual`);
   no reviewer/model was selected and no receipt exists. The findings ledger
   contains no open or fixed P0/P1 findings.
-- Step 4 remains pending: hosted topics and branch publication require separate
-  authorization under Autopilot. No hosted workflow run or candidate revision
-  has been verified. Next actions after authorization are the additive topic
-  command above, `git push -u origin feature/automated-hacs-validation`, and
-  inspection of the resulting **Validate** run before marking this verified.
+- Step 4 hosted attempt, 2026-09-11: user-approved branch push produced
+  [Validate run 34589933491](https://github.com/yairabf/home-stock-tracker-ha/actions/runs/34589933491)
+  for push commit `d75b4533e71cfc3f0c7757e6499c8671e6797a05`.
+  **Hassfest passed; HACS failed.** HACS logged the intended repository/ref:
+  `yairabf/home-stock-tracker-ha@refs/heads/feature/automated-hacs-validation`.
+  Topics, description, information, archived, issues, integration_manifest, and
+  hacsjson checks passed; the license check failed with
+  `The repository has no license` (1/8 enabled checks failed).
+  `brands` remains the only ignored check.
+- The maintainer explicitly selected Apache-2.0 after reviewing the license
+  options. Step 3a adds the approved license; the existing feature-branch push
+  authorization covers publishing that repair and rerunning validation.
+  Step 4 still requires both hosted jobs to pass before archival.
+- Completion local checks were rerun: `.venv/bin/python -m pytest -q tests`
+  passed all **11 tests** (0.49 seconds), and `git diff main --check` passed.
+- Step 3a, 2026-09-11: added the maintainer-approved Apache-2.0 license and
+  README copyright/license notice in `93ce2a6`. The isolated commit changes
+  only `LICENSE` and `README.md`. `LICENSE` matches the official Apache text
+  byte for byte (SHA-256
+  `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`).
+  Updated `RELEASE.md` to include the license prerequisite.
+  `.venv/bin/python -m pytest -q tests`: **11 passed** (0.53 seconds);
+  `git diff --check` and `git diff --cached --check` passed.
 
 ## Notes for the AI
 

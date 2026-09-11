@@ -77,8 +77,9 @@ independently:
 | HACS | HACS repository requirements using the event's repository and the official HACS action |
 
 The repository must be public and unarchived, have a description and topics,
-and have issues enabled. Use the topics `home-assistant`, `hacs`, and
-`custom-integration`, preserving any other existing topics. Missing topics or
+have issues enabled, and have an OSI-approved license recognized by GitHub.
+This repository uses [Apache-2.0](LICENSE). Use the topics `home-assistant`,
+`hacs`, and `custom-integration`, preserving any other existing topics. Missing topics or
 other unmet requirements must be corrected before expecting HACS to pass.
 
 The sole temporary exception is HACS's `brands` check. Feature 2c supplies the

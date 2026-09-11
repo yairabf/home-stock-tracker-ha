@@ -1,21 +1,27 @@
 {
-  "status": "ready",
-  "command": "autopilot",
-  "activity": "autopilot",
+  "status": "running",
+  "command": "complete",
+  "activity": "complete",
   "boundary": "reviewed",
   "target": "2b. Automated HACS validation",
   "branch": "feature/automated-hacs-validation",
   "steps": {
-    "completed": 3,
-    "total": 4,
-    "current": 4
+    "completed": 4,
+    "total": 5,
+    "current": 5
   },
   "verification": "incomplete",
-  "next_action": "Authorize the additive GitHub topic update and branch push, then run $autopilot resume for hosted verification.",
+  "next_action": "Push the approved licensing repair and inspect hosted validation and repository license detection.",
   "quality_gates": {
     "check": "manual; skipped",
     "audit": "manual; skipped",
     "tryGuide": "manual; skipped",
     "independentReview": "manual (not configured); no request"
+  },
+  "hosted_run": "https://github.com/yairabf/home-stock-tracker-ha/actions/runs/34589933491",
+  "hosted_revision": "d75b4533e71cfc3f0c7757e6499c8671e6797a05",
+  "hosted_results": {
+    "Hassfest": "passed",
+    "HACS": "failed: repository has no license"
   }
 }
