@@ -55,7 +55,7 @@ and pushing remain outside that authorization.
   read-only permissions and a finite timeout, and metadata remains valid JSON.
   Execute Hassfest locally when its container runtime is available and record
   any findings; run the existing pytest suite if integration metadata changes.
-- [ ] **Step 2 - Add HACS repository validation** - add the independent HACS job
+- [x] **Step 2 - Add HACS repository validation** - add the independent HACS job
   using `category: integration`, disabled PR comments, and only the temporary
   `brands` ignore. Record the exact additive topic update needed for hosted
   verification in Step 4. *Done when:* both jobs are present without a dependency on
@@ -169,9 +169,22 @@ No service API, stored config-entry, or sensor-data contract changes.
   No integration metadata corrections were needed.
 - `.venv/bin/python -m pytest -q tests`: **11 passed** (0.52 seconds).
   `git diff --check`: passed.
+- Step 2: parsed and reviewed the complete workflow. HACS and Hassfest have no
+  `needs` dependency; HACS inherits empty permissions, uses `comment: "false"`,
+  and ignores only `brands` with a Feature 2c removal comment. No result is
+  suppressed. Hosted HACS execution remains pending Step 4.
 - Refreshed the overview from the unchanged plans after detecting its stale
   source fingerprint. Split the last build step into local release documentation
   and hosted verification without removing any acceptance criteria.
+- Hosted topic update prepared for Step 4: add `home-assistant`, `hacs`, and
+  `custom-integration` to `yairabf/home-stock-tracker-ha`, preserving all current
+  topics. Exact additive command, to run only with external-action authorization:
+
+  ```bash
+  gh repo edit yairabf/home-stock-tracker-ha --add-topic home-assistant --add-topic hacs --add-topic custom-integration
+  ```
+
+  No hosted repository settings have been changed by this Autopilot run.
 
 ## Notes for the AI
 
