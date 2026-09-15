@@ -17,8 +17,9 @@
   - [x] 2c. HACS brand assets
   - [x] 2d. Installation and support documentation
 
-## Deferred — requires explicit approval
+## Approved write-action rollout
 
-- [ ] 3. Any write action from Home Assistant
-  - This is deliberately outside the integration's current safety boundary and
-    needs a separate spec for confirmation, retries, and concurrency behavior.
+- [ ] 3. Write actions from Home Assistant
+  - [x] 3a. Confirmed grocery-list addition
+  - [ ] 3b. Explicit catalog resolution and duplicate-item decisions
+  - [ ] 3c. Purchase and inventory mutations

@@ -1,78 +1,78 @@
 # Home Stock Tracker HA - Project Overview
 
-<!-- blueprint:source-hash f08e422c0dd03bb9c1e8b996be12a5b4b85853fdceb455648931f468fd58d7b9 -->
+<!-- blueprint:source-hash 8e28959488600fc08aaa0dfcfe8d3dddded868aa1cd36df677401be31c7e2097 -->
 
-> A read-only Home Assistant custom integration for monitoring household stock
-> data from the Home Stock Tracker service.
+> A Home Assistant custom integration for monitoring Home Stock Tracker data,
+> with one deliberately narrow, confirmed grocery-addition action planned.
 
 ## Problem
 
 Households need concise, automation-friendly signals for pending groceries,
 tracked inventory, and low-stock recommendations inside Home Assistant. The
-integration provides those signals without exposing service credentials in YAML
-or allowing Home Assistant to modify the source service.
+integration provides these signals from the existing service without exposing
+credentials in YAML. The approved grocery-addition slice lets an explicit Home
+Assistant action place a selected item on the source service's grocery list.
 
 ## Users
 
-- **Household member** - views stock signals in Home Assistant dashboards and
-  automations.
-- **Home Assistant administrator** - connects the existing service through a
-  UI config flow using a service URL and token.
+- **Household member** - views stock signals and explicitly adds a grocery item
+  through Home Assistant.
+- **Home Assistant administrator** - connects the service using a UI config
+  flow with a service URL and bearer token.
 
 ## Features
 
 1. **Read-only Home Assistant custom integration** *(completed)* - config flow,
    coordinated polling, availability-aware count sensors, HACS metadata, and
-   automated tests.
-2. **HACS release-quality readiness** - confirmed next direction, split into:
-   - **2a. Release and versioning policy** *(completed)* - the repository's
-     release contract and versioning conventions are documented.
-   - **2b. Automated HACS validation** *(completed)* - automated validation of
-     HACS repository requirements and Home Assistant integration metadata.
-   - **2c. HACS brand assets** - supply the publication assets needed for the
-     chosen HACS presentation.
-   - **2d. Installation and support documentation** - document installation,
-     configuration, and support expectations.
-3. **Any write action from Home Assistant** *(deferred)* - requires separate
-   approval and a safety design for confirmation, retries, and concurrency.
+   tests.
+2. **HACS release-quality readiness** *(completed)* - release policy, automated
+   HACS validation, brand assets, and installation/support documentation.
+3. **Write actions from Home Assistant** *(approved rollout)* - split into:
+   - **3a. Confirmed grocery-list addition** - a single opt-in, duplicate-safe
+     grocery-add service.
+   - **3b. Explicit catalog resolution and duplicate-item decisions** - follow-up
+     user decisions for unresolved products and existing pending items.
+   - **3c. Purchase and inventory mutations** - later, independently approved
+     stock-changing operations.
 
 ## Data model
 
-The integration stores no independent application data and must remain
-read-only. The Home Stock Tracker service owns record-level schemas.
+The Home Stock Tracker service owns all records; the integration stores no
+independent application data.
 
 ### Config entry
 
-- `service_url` (`str`) - Home Stock Tracker service URL, validated by the
-  config flow.
-- `api_token` (secret `str`) - authentication token; never logged, surfaced in
-  attributes, diagnostics, or test output.
+- `service_url` (`str`) - validated service origin.
+- `api_token` (secret `str`) - bearer token; never logged, returned, or exposed
+  in entity attributes or test output.
 
 ### Coordinator snapshot
 
-- `groceries` (`list[Mapping[str, Any]]`) - current records from the grocery
-  read endpoint.
-- `inventory` (`list[Mapping[str, Any]]`) - current records from the inventory
-  read endpoint.
-- `low_stock_recommendations` (`list[Mapping[str, Any]]`) - current records
-  from the low-stock read endpoint.
-- Response records are untrusted external JSON and require shape validation
-  before exposure. Their field-level schema is not specified in the plans.
+- `groceries` (`list[Mapping[str, Any]]`) - current grocery records.
+- `inventory` (`list[Mapping[str, Any]]`) - current inventory records.
+- `low_stock_recommendations` (`list[Mapping[str, Any]]`) - current low-stock
+  recommendations.
+- Untrusted response JSON must be shape-validated before exposure; connection,
+  authentication, and invalid-payload failures leave data unavailable.
 
-### Home Assistant entities
+### Confirmed grocery-addition contract *(load-bearing for 3a)*
 
-- Three count sensors derive integer state from the corresponding coordinator
-  record list and expose source records as attributes.
-- Connection, authentication, and invalid-payload failures make data
-  unavailable; stale data must not be represented as current.
+- Home Assistant service input: `product_name` (`str`), `confirm` (`bool`, must
+  be `true`), and optional positive `requested_quantity`, `unit`, and `note`.
+- Service request: `POST /api/v1/grocery/items` with
+  `unknownProductPolicy: "propose_if_missing"`, `productName`, and
+  `groceryItem.ifPendingExists: "return_existing"`.
+- Source outcomes: `created`, `confirmation_required`, or
+  `product_resolution_required`. Only `created` changes source data; other
+  outcomes must never be retried or converted into a mutation.
 
 ## Tech stack
 
-- **Python** - custom integration runtime under
+- **Python / Home Assistant custom integration** - runtime under
   `custom_components/home_stock_tracker/`.
 - **Home Assistant config entries and `DataUpdateCoordinator`** - lifecycle,
-  shared polling, and refresh ownership.
-- **`pytest-homeassistant-custom-component`** - automated integration tests.
+  shared polling, refresh ownership, and shared authenticated HTTP access.
+- **pytest-homeassistant-custom-component** - automated integration tests.
 - **HACS custom repository** - distribution at `yairabf/home-stock-tracker-ha`.
 
 ## Monetization
@@ -81,25 +81,16 @@ Not specified; the plans describe a public HACS custom repository.
 
 ## UI/UX
 
-Home Assistant provides the UI surface:
-
-- Config-flow UI - service URL and token setup, validation, and
-  reauthentication.
-- Dashboard and automation entities - three availability-aware count sensors
-  for groceries, inventory, and low-stock recommendations.
+Home Assistant provides the UI surface: config-flow setup, three dashboard and
+automation sensors, and (for 3a) an explicit service call with confirmation.
 
 ## Deployment
 
 The integration is distributed as a public HACS custom repository. No separate
-application host, build command, worker, database, health check, domain, or
-environment-variable deployment contract is specified.
+host, build command, worker, database, or deployment contract is specified.
 
 ## Open questions
 
-> Planning gap: the project plan still describes release policy and HACS
-> validation as future delivery choices, while the build plan marks Features
-> 2a and 2b complete. This does not establish that a release has been published;
-> brand assets and support documentation remain planned work.
-
-> TODO: Decide whether a future write-capable integration is desired; it must
-> remain outside the current read-only boundary unless separately approved.
+> The project plan still labels all write capability a TODO, while the build
+> plan now approves only 3a. Update the project plan when the approved
+> exception should become the durable product boundary.

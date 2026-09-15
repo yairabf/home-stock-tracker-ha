@@ -5,12 +5,12 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, Literal
 
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -26,6 +26,65 @@ class HomeStockTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         super().__init__(hass, logger=_LOGGER, name=DOMAIN, update_interval=UPDATE_INTERVAL)
         self._base_url = entry.data[CONF_BASE_URL]
         self._headers = {"Authorization": f"Bearer {entry.data[CONF_API_TOKEN]}"}
+
+    async def async_add_grocery_item(
+        self,
+        *,
+        product_name: str,
+        requested_quantity: float | int | None,
+        unit: str | None,
+        note: str | None,
+    ) -> Literal[
+        "created", "confirmation_required", "product_resolution_required"
+    ]:
+        """Add one grocery item without retrying an uncertain write."""
+        payload: dict[str, Any] = {
+            "unknownProductPolicy": "propose_if_missing",
+            "productName": product_name,
+            "groceryItem": {"ifPendingExists": "return_existing"},
+        }
+        grocery_item = payload["groceryItem"]
+        if requested_quantity is not None:
+            grocery_item["requestedQuantity"] = requested_quantity
+        if unit is not None:
+            grocery_item["unit"] = unit
+        if note is not None:
+            grocery_item["note"] = note
+
+        session = async_get_clientsession(self.hass)
+        try:
+            async with session.post(
+                f"{self._base_url}{API_VERSION_PATH}{GROCERY_ITEMS_PATH}",
+                json=payload,
+                headers=self._headers,
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as response:
+                if response.status == 401:
+                    self._set_write_failure("Home Stock Tracker authentication failed")
+                    raise HomeAssistantError(
+                        "Home Stock Tracker authentication failed"
+                    )
+                response.raise_for_status()
+                result = await response.json()
+        except HomeAssistantError:
+            raise
+        except (aiohttp.ClientError, asyncio.TimeoutError, ValueError):
+            self._set_write_failure("Home Stock Tracker grocery addition failed")
+            raise HomeAssistantError("Home Stock Tracker grocery addition failed") from None
+
+        if not isinstance(result, Mapping) or result.get("outcome") not in {
+            "created",
+            "confirmation_required",
+            "product_resolution_required",
+        }:
+            self._set_write_failure("Home Stock Tracker returned an invalid response")
+            raise HomeAssistantError("Home Stock Tracker returned an invalid response")
+
+        return result["outcome"]
+
+    def _set_write_failure(self, message: str) -> None:
+        """Make entity data unavailable after an uncertain write outcome."""
+        self.async_set_update_error(UpdateFailed(message))
 
     async def _async_update_data(self) -> dict[str, Any]:
         session = async_get_clientsession(self.hass)

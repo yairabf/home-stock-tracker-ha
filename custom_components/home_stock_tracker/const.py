@@ -13,5 +13,11 @@ API_VERSION_PATH: Final = "/api/v1"
 GROCERY_ITEMS_PATH: Final = "/grocery/items"
 INVENTORY_PATH: Final = "/inventory"
 LOW_STOCK_PATH: Final = "/inventory/predictions/low-stock"
+SERVICE_ADD_GROCERY_ITEM: Final = "add_grocery_item"
+ATTR_PRODUCT_NAME: Final = "product_name"
+ATTR_CONFIRM: Final = "confirm"
+ATTR_REQUESTED_QUANTITY: Final = "requested_quantity"
+ATTR_UNIT: Final = "unit"
+ATTR_NOTE: Final = "note"
 PLATFORMS: Final = [Platform.SENSOR]
 UPDATE_INTERVAL: Final = timedelta(minutes=5)

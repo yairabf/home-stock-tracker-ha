@@ -105,8 +105,31 @@ empty result appears as `0`. Authentication, connectivity, non-success, or
 invalid-response failures make all entities unavailable rather than showing
 stale data as current.
 
-It makes authenticated `GET` requests only. It does not modify Home Stock
-Tracker data or call MCP.
+It uses authenticated `GET` requests for polling. Its only source-data mutation
+is the explicit, confirmed grocery-add service documented below; it does not
+call MCP.
+
+## Add a grocery item
+
+The integration provides one explicit, opt-in write service:
+`home_stock_tracker.add_grocery_item`. It adds a named item only when the call
+sets `confirm: true`; it never runs during polling or automatically from a
+low-stock recommendation.
+
+```yaml
+action: home_stock_tracker.add_grocery_item
+data:
+  product_name: Milk
+  confirm: true
+  requested_quantity: 2
+  unit: carton
+  note: Weekly shop
+```
+
+`requested_quantity`, `unit`, and `note` are optional. Product names that need
+resolution, or an item that is already pending, are rejected without creating
+or changing a record. The integration does not retry an uncertain write. Use
+the source service to resolve a product or decide how to handle a duplicate.
 
 ## Development
 
