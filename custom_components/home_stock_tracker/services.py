@@ -144,6 +144,16 @@ CONFIRM_GROCERY_PRODUCT_ALIAS_SCHEMA = vol.Schema(
     }
 )
 
+CONFIRM_GROCERY_DUPLICATE_AS_SEPARATE_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_PRODUCT_NAME): _nonempty_string,
+        vol.Required(ATTR_CONFIRM): _confirmed,
+        vol.Optional(ATTR_REQUESTED_QUANTITY): _positive_finite_number,
+        vol.Optional(ATTR_UNIT): _nonempty_string,
+        vol.Optional(ATTR_NOTE): _nonempty_string,
+    }
+)
+
 
 def _coordinator(hass: HomeAssistant) -> HomeStockTrackerCoordinator:
     """Return the sole configured coordinator for an explicit service call."""
@@ -206,6 +216,27 @@ async def async_handle_confirm_grocery_product_alias(
         grocery_item=call.data[ATTR_GROCERY_ITEM],
     )
     await _handle_catalog_confirmation_outcome(coordinator, outcome)
+
+
+async def async_handle_confirm_grocery_duplicate_as_separate(
+    hass: HomeAssistant, call: ServiceCall
+) -> None:
+    """Create one separately confirmed pending grocery line."""
+    coordinator = _coordinator(hass)
+    outcome = await coordinator.async_confirm_grocery_duplicate_as_separate(
+        product_name=call.data[ATTR_PRODUCT_NAME],
+        requested_quantity=call.data.get(ATTR_REQUESTED_QUANTITY),
+        unit=call.data.get(ATTR_UNIT),
+        note=call.data.get(ATTR_NOTE),
+    )
+    if outcome == "created":
+        await coordinator.async_request_refresh()
+        return
+    if outcome == "confirmation_required":
+        raise HomeAssistantError("A pending grocery item already exists")
+    if outcome == "product_resolution_required":
+        raise HomeAssistantError("The grocery item needs product resolution")
+    raise HomeAssistantError("Home Stock Tracker returned an invalid response")
 
 
 async def _handle_catalog_confirmation_outcome(

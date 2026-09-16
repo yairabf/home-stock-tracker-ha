@@ -234,6 +234,106 @@ async def test_add_grocery_item_posts_the_fixed_safe_policy(
     assert session.post.call_args.kwargs["timeout"].total == 10
 
 
+async def test_duplicate_decision_posts_the_forced_separate_line_policy(
+    hass: HomeAssistant, config_entry: ConfigEntry
+) -> None:
+    """A duplicate decision has one fixed create-separate POST contract."""
+    response = MagicMock(status=200)
+    response.json = AsyncMock(return_value={"outcome": "created"})
+    session = _post_session(response)
+    coordinator = HomeStockTrackerCoordinator(hass, config_entry)
+
+    with patch(
+        "custom_components.home_stock_tracker.coordinator.async_get_clientsession",
+        return_value=session,
+    ):
+        outcome = await coordinator.async_confirm_grocery_duplicate_as_separate(
+            product_name="Milk",
+            requested_quantity=2,
+            unit="carton",
+            note="weekly shop",
+        )
+
+    assert outcome == "created"
+    session.post.assert_called_once_with(
+        "http://inventory.local/api/v1/grocery/items",
+        json={
+            "unknownProductPolicy": "propose_if_missing",
+            "productName": "Milk",
+            "groceryItem": {
+                "ifPendingExists": "create_separate",
+                "requestedQuantity": 2,
+                "unit": "carton",
+                "note": "weekly shop",
+            },
+        },
+        headers={"Authorization": "Bearer secret-token"},
+        timeout=ANY,
+    )
+
+
+async def test_duplicate_decision_omits_absent_optional_fields(
+    hass: HomeAssistant, config_entry: ConfigEntry
+) -> None:
+    """Omitted line facts never become an implicit quantity or other field."""
+    response = MagicMock(status=200)
+    response.json = AsyncMock(return_value={"outcome": "created"})
+    session = _post_session(response)
+    coordinator = HomeStockTrackerCoordinator(hass, config_entry)
+
+    with patch(
+        "custom_components.home_stock_tracker.coordinator.async_get_clientsession",
+        return_value=session,
+    ):
+        await coordinator.async_confirm_grocery_duplicate_as_separate(
+            product_name="Milk",
+            requested_quantity=None,
+            unit=None,
+            note=None,
+        )
+
+    assert session.post.call_args.kwargs["json"] == {
+        "unknownProductPolicy": "propose_if_missing",
+        "productName": "Milk",
+        "groceryItem": {"ifPendingExists": "create_separate"},
+    }
+
+
+@pytest.mark.parametrize(
+    "response_body",
+    [
+        {"outcome": "confirmation_required"},
+        {"outcome": "product_resolution_required"},
+    ],
+)
+async def test_duplicate_decision_returns_known_non_created_outcomes(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    response_body: dict[str, str],
+) -> None:
+    """Known outcomes remain final decisions without a retry or update error."""
+    response = MagicMock(status=200)
+    response.json = AsyncMock(return_value=response_body)
+    session = _post_session(response)
+    coordinator = HomeStockTrackerCoordinator(hass, config_entry)
+    coordinator.last_update_success = True
+
+    with patch(
+        "custom_components.home_stock_tracker.coordinator.async_get_clientsession",
+        return_value=session,
+    ):
+        outcome = await coordinator.async_confirm_grocery_duplicate_as_separate(
+            product_name="Milk",
+            requested_quantity=None,
+            unit=None,
+            note=None,
+        )
+
+    assert outcome == response_body["outcome"]
+    assert coordinator.last_update_success
+    assert session.post.call_count == 1
+
+
 @pytest.mark.parametrize(
     ("method", "kwargs", "path", "payload"),
     [
@@ -457,6 +557,76 @@ async def test_add_grocery_item_fails_closed_for_invalid_or_unauthorized_respons
     assert session.post.call_count == 1
 
 
+@pytest.mark.parametrize(
+    ("response_status", "response_body", "message"),
+    [
+        (401, {"outcome": "created"}, "authentication failed"),
+        (200, {"outcome": "unexpected"}, "invalid response"),
+    ],
+)
+async def test_duplicate_decision_fails_closed_for_uncertain_responses(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    response_status: int,
+    response_body: dict[str, str],
+    message: str,
+) -> None:
+    """Unauthorized and invalid duplicate decisions leave data unavailable."""
+    response = MagicMock(status=response_status)
+    response.json = AsyncMock(return_value=response_body)
+    session = _post_session(response)
+    coordinator = HomeStockTrackerCoordinator(hass, config_entry)
+    coordinator.last_update_success = True
+
+    with patch(
+        "custom_components.home_stock_tracker.coordinator.async_get_clientsession",
+        return_value=session,
+    ):
+        with pytest.raises(HomeAssistantError, match=message):
+            await coordinator.async_confirm_grocery_duplicate_as_separate(
+                product_name="Milk",
+                requested_quantity=None,
+                unit=None,
+                note=None,
+            )
+
+    assert not coordinator.last_update_success
+    assert session.post.call_count == 1
+
+
+@pytest.mark.parametrize("failure", ["non_success", "malformed_json"])
+async def test_duplicate_decision_fails_closed_for_transport_or_payload_failures(
+    hass: HomeAssistant, config_entry: ConfigEntry, failure: str
+) -> None:
+    """HTTP failures and malformed JSON cannot leave stale data available."""
+    response = MagicMock(status=503)
+    if failure == "non_success":
+        response.raise_for_status.side_effect = aiohttp.ClientResponseError(
+            MagicMock(), (), status=503, message="service unavailable"
+        )
+    else:
+        response.status = 200
+        response.json = AsyncMock(side_effect=ValueError("not JSON"))
+    session = _post_session(response)
+    coordinator = HomeStockTrackerCoordinator(hass, config_entry)
+    coordinator.last_update_success = True
+
+    with patch(
+        "custom_components.home_stock_tracker.coordinator.async_get_clientsession",
+        return_value=session,
+    ):
+        with pytest.raises(HomeAssistantError, match="grocery addition failed"):
+            await coordinator.async_confirm_grocery_duplicate_as_separate(
+                product_name="Milk",
+                requested_quantity=None,
+                unit=None,
+                note=None,
+            )
+
+    assert not coordinator.last_update_success
+    assert session.post.call_count == 1
+
+
 async def test_add_grocery_item_does_not_retry_connection_failures(
     hass: HomeAssistant, config_entry: ConfigEntry
 ) -> None:
@@ -474,6 +644,33 @@ async def test_add_grocery_item_does_not_retry_connection_failures(
     ):
         with pytest.raises(HomeAssistantError, match="grocery addition failed"):
             await coordinator.async_add_grocery_item(
+                product_name="Milk",
+                requested_quantity=None,
+                unit=None,
+                note=None,
+            )
+
+    assert not coordinator.last_update_success
+    assert session.post.call_count == 1
+
+
+async def test_duplicate_decision_does_not_retry_connection_failures(
+    hass: HomeAssistant, config_entry: ConfigEntry
+) -> None:
+    """An uncertain duplicate-decision POST remains a single request."""
+    context_manager = AsyncMock()
+    context_manager.__aenter__.side_effect = aiohttp.ClientConnectionError()
+    session = MagicMock()
+    session.post.return_value = context_manager
+    coordinator = HomeStockTrackerCoordinator(hass, config_entry)
+    coordinator.last_update_success = True
+
+    with patch(
+        "custom_components.home_stock_tracker.coordinator.async_get_clientsession",
+        return_value=session,
+    ):
+        with pytest.raises(HomeAssistantError, match="grocery addition failed"):
+            await coordinator.async_confirm_grocery_duplicate_as_separate(
                 product_name="Milk",
                 requested_quantity=None,
                 unit=None,

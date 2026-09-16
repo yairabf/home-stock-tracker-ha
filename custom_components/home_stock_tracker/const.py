@@ -20,6 +20,9 @@ SERVICE_ADD_GROCERY_ITEM: Final = "add_grocery_item"
 SERVICE_SEARCH_PRODUCTS: Final = "search_products"
 SERVICE_CONFIRM_GROCERY_NEW_PRODUCT: Final = "confirm_grocery_new_product"
 SERVICE_CONFIRM_GROCERY_PRODUCT_ALIAS: Final = "confirm_grocery_product_alias"
+SERVICE_CONFIRM_GROCERY_DUPLICATE_AS_SEPARATE: Final = (
+    "confirm_grocery_duplicate_as_separate"
+)
 ATTR_PRODUCT_NAME: Final = "product_name"
 ATTR_CONFIRM: Final = "confirm"
 ATTR_REQUESTED_QUANTITY: Final = "requested_quantity"

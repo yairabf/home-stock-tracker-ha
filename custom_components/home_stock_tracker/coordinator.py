@@ -267,6 +267,38 @@ class HomeStockTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if note is not None:
             grocery_item["note"] = note
 
+        return await self._async_post_grocery_addition(payload)
+
+    async def async_confirm_grocery_duplicate_as_separate(
+        self,
+        *,
+        product_name: str,
+        requested_quantity: float | int | None,
+        unit: str | None,
+        note: str | None,
+    ) -> Literal[
+        "created", "confirmation_required", "product_resolution_required"
+    ]:
+        """Create one explicitly confirmed separate pending grocery line."""
+        payload: dict[str, Any] = {
+            "unknownProductPolicy": "propose_if_missing",
+            "productName": product_name,
+            "groceryItem": {"ifPendingExists": "create_separate"},
+        }
+        grocery_item = payload["groceryItem"]
+        if requested_quantity is not None:
+            grocery_item["requestedQuantity"] = requested_quantity
+        if unit is not None:
+            grocery_item["unit"] = unit
+        if note is not None:
+            grocery_item["note"] = note
+
+        return await self._async_post_grocery_addition(payload)
+
+    async def _async_post_grocery_addition(
+        self, payload: dict[str, Any]
+    ) -> Literal["created", "confirmation_required", "product_resolution_required"]:
+        """POST one policy-aware grocery request without retrying it."""
         session = async_get_clientsession(self.hass)
         try:
             async with session.post(

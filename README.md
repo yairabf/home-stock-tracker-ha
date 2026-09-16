@@ -180,8 +180,31 @@ data:
 Both confirmation services make one request only. A pending-duplicate result
 does not refresh or change the existing grocery line; it may mean the catalog
 decision succeeded but the grocery quantity still needs a separate explicit
-decision. Do not retry it. Duplicate-item decisions are not available in this
-release.
+decision. Do not retry it.
+
+## Add a separate duplicate line
+
+After reviewing a pending-duplicate result, a household member can deliberately
+create one additional line with
+`home_stock_tracker.confirm_grocery_duplicate_as_separate`. This service never
+changes the existing line and must not be used to increment or merge its
+quantity.
+
+```yaml
+action: home_stock_tracker.confirm_grocery_duplicate_as_separate
+data:
+  product_name: Three Percent Milk
+  confirm: true
+  requested_quantity: 2
+  unit: cartons
+  note: for the children
+```
+
+All line details other than `product_name` and `confirm` are optional. The
+integration sends a single request with its fixed `create_separate` policy, then
+refreshes its sensors only after the source confirms creation. It does not retry
+or fall back to a quantity change if the source still requires a decision or
+product resolution.
 
 ## Development
 

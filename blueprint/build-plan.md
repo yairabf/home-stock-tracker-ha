@@ -21,7 +21,7 @@
 
 - [ ] 3. Write actions from Home Assistant
   - [x] 3a. Confirmed grocery-list addition
-  - [ ] 3b. Explicit catalog resolution and duplicate-item decisions
+  - [x] 3b. Explicit catalog resolution and duplicate-item decisions
     - [x] 3b1. Explicit catalog-candidate selection
-    - [ ] 3b2. Explicit pending-duplicate decision
+    - [x] 3b2. Explicit pending-duplicate decision
   - [ ] 3c. Purchase and inventory mutations

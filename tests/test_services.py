@@ -31,12 +31,14 @@ from custom_components.home_stock_tracker.const import (
 )
 from custom_components.home_stock_tracker.services import (
     ADD_GROCERY_ITEM_SCHEMA,
+    CONFIRM_GROCERY_DUPLICATE_AS_SEPARATE_SCHEMA,
     CONFIRM_GROCERY_NEW_PRODUCT_SCHEMA,
     CONFIRM_GROCERY_PRODUCT_ALIAS_SCHEMA,
     SEARCH_PRODUCTS_SCHEMA,
     async_handle_add_grocery_item,
     async_handle_confirm_grocery_new_product,
     async_handle_confirm_grocery_product_alias,
+    async_handle_confirm_grocery_duplicate_as_separate,
     async_handle_search_products,
 )
 
@@ -76,6 +78,31 @@ def test_add_grocery_item_schema_rejects_unconfirmed_or_invalid_data(data) -> No
     """Invalid service data cannot reach the write transport."""
     with pytest.raises(vol.Invalid):
         ADD_GROCERY_ITEM_SCHEMA(data)
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        {ATTR_PRODUCT_NAME: "Milk", ATTR_CONFIRM: False},
+        {ATTR_PRODUCT_NAME: "   ", ATTR_CONFIRM: True},
+        {ATTR_PRODUCT_NAME: "Milk", ATTR_CONFIRM: True, ATTR_UNIT: ""},
+        {ATTR_PRODUCT_NAME: "Milk", ATTR_CONFIRM: True, ATTR_NOTE: "  "},
+        {
+            ATTR_PRODUCT_NAME: "Milk",
+            ATTR_CONFIRM: True,
+            ATTR_REQUESTED_QUANTITY: 0,
+        },
+        {
+            ATTR_PRODUCT_NAME: "Milk",
+            ATTR_CONFIRM: True,
+            ATTR_REQUESTED_QUANTITY: float("inf"),
+        },
+    ],
+)
+def test_duplicate_decision_schema_rejects_unconfirmed_or_invalid_data(data) -> None:
+    """A separate-line decision needs an explicit valid local confirmation."""
+    with pytest.raises(vol.Invalid):
+        CONFIRM_GROCERY_DUPLICATE_AS_SEPARATE_SCHEMA(data)
 
 
 @pytest.mark.parametrize(
@@ -166,6 +193,66 @@ async def test_add_grocery_item_routes_validated_data_to_coordinator(hass) -> No
         note="weekly shop",
     )
     coordinator.async_request_refresh.assert_awaited_once_with()
+
+
+async def test_duplicate_decision_routes_validated_data_to_coordinator(hass) -> None:
+    """A confirmed duplicate decision is thin routing to the sole coordinator."""
+    coordinator = AsyncMock()
+    coordinator.async_confirm_grocery_duplicate_as_separate.return_value = "created"
+    hass.data[DOMAIN] = {"entry-id": coordinator}
+    call = ServiceCall(
+        hass,
+        DOMAIN,
+        "confirm_grocery_duplicate_as_separate",
+        CONFIRM_GROCERY_DUPLICATE_AS_SEPARATE_SCHEMA(
+            {
+                ATTR_PRODUCT_NAME: "  Milk ",
+                ATTR_CONFIRM: True,
+                ATTR_REQUESTED_QUANTITY: 2,
+                ATTR_UNIT: " carton ",
+                ATTR_NOTE: " weekly shop ",
+            }
+        ),
+    )
+
+    await async_handle_confirm_grocery_duplicate_as_separate(hass, call)
+
+    coordinator.async_confirm_grocery_duplicate_as_separate.assert_awaited_once_with(
+        product_name="Milk",
+        requested_quantity=2,
+        unit="carton",
+        note="weekly shop",
+    )
+    coordinator.async_request_refresh.assert_awaited_once_with()
+
+
+@pytest.mark.parametrize(
+    ("outcome", "message"),
+    [
+        ("confirmation_required", "already exists"),
+        ("product_resolution_required", "needs product resolution"),
+    ],
+)
+async def test_duplicate_decision_does_not_refresh_non_created_outcomes(
+    hass, outcome: str, message: str
+) -> None:
+    """A failed separate-line decision cannot make a follow-up mutation."""
+    coordinator = AsyncMock()
+    coordinator.async_confirm_grocery_duplicate_as_separate.return_value = outcome
+    hass.data[DOMAIN] = {"entry-id": coordinator}
+    call = ServiceCall(
+        hass,
+        DOMAIN,
+        "confirm_grocery_duplicate_as_separate",
+        CONFIRM_GROCERY_DUPLICATE_AS_SEPARATE_SCHEMA(
+            {ATTR_PRODUCT_NAME: "Milk", ATTR_CONFIRM: True}
+        ),
+    )
+
+    with pytest.raises(HomeAssistantError, match=message):
+        await async_handle_confirm_grocery_duplicate_as_separate(hass, call)
+
+    coordinator.async_request_refresh.assert_not_awaited()
 
 
 async def test_catalog_services_route_validated_data_to_coordinator(hass) -> None:
