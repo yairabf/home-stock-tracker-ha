@@ -1,22 +1,22 @@
 {
-  "status": "ready",
+  "status": "running",
   "command": "feature",
-  "activity": "completed feature ready to push",
-  "boundary": "3a permits only explicit confirmed grocery-list additions",
-  "target": "3a. Confirmed grocery-list addition",
+  "activity": "feature 3b1 archived; preparing work-level commit",
+  "boundary": "3b1 permits read-only catalog search and only explicit confirmed catalog-and-grocery requests; pending-duplicate decisions remain 3b2",
+  "target": "3b1. Explicit catalog-candidate selection (complete on branch)",
   "branch": "main",
   "steps": {
     "completed": 3,
     "total": 3,
     "current": null
   },
-  "verification": "passed (.venv/bin/python -m pytest -q tests)",
-  "next_action": "Push local main to origin only with the user's separate approval.",
+  "verification": "passed (.venv/bin/python -m pytest -q tests; 47 passed; git diff --check passed)",
+  "next_action": "Create the work-level commit, then request explicit approval to squash-merge into main.",
   "quality_gates": {
-    "check": "manual; skipped",
-    "audit": "manual; skipped",
-    "tryGuide": "manual; skipped",
-    "independentReview": "manual (not configured); no request"
+    "check": "manual; not run",
+    "audit": "manual; not run",
+    "tryGuide": "manual; not run",
+    "independentReview": "not requested"
   },
   "hosted_run": "https://github.com/yairabf/home-stock-tracker-ha/actions/runs/34592084606",
   "hosted_revision": "3329a0af047085ecba7076b8865643fa46f30813",

@@ -105,9 +105,9 @@ empty result appears as `0`. Authentication, connectivity, non-success, or
 invalid-response failures make all entities unavailable rather than showing
 stale data as current.
 
-It uses authenticated `GET` requests for polling. Its only source-data mutation
-is the explicit, confirmed grocery-add service documented below; it does not
-call MCP.
+It uses authenticated `GET` requests for polling. Its only source-data writes
+are the explicit, confirmed grocery and catalog services documented below; it
+does not call MCP.
 
 ## Add a grocery item
 
@@ -126,10 +126,62 @@ data:
   note: Weekly shop
 ```
 
-`requested_quantity`, `unit`, and `note` are optional. Product names that need
-resolution, or an item that is already pending, are rejected without creating
-or changing a record. The integration does not retry an uncertain write. Use
-the source service to resolve a product or decide how to handle a duplicate.
+`requested_quantity`, `unit`, and `note` are optional. The integration does not
+retry an uncertain write.
+
+## Resolve a catalog choice
+
+If an item name needs a catalog decision, first call the response-only search
+service from Developer Tools. It is read-only and returns candidates in the
+source service's authoritative order.
+
+```yaml
+action: home_stock_tracker.search_products
+data:
+  query: Three Percent Milk
+  limit: 5
+response_variable: catalog_search
+```
+
+Choose a returned exact `id` yourself; the integration never selects a
+candidate. To approve an alias relationship and add the grocery item, call:
+
+```yaml
+action: home_stock_tracker.confirm_grocery_product_alias
+data:
+  confirm: true
+  target_product_id: <exact id from catalog_search>
+  alias: Three Percent Milk
+  grocery_item:
+    requested_quantity: 2
+    unit: cartons
+```
+
+To create a new catalog product instead, supply complete final facts—never a
+proposal or inferred values:
+
+```yaml
+action: home_stock_tracker.confirm_grocery_new_product
+data:
+  confirm: true
+  product:
+    canonical_name: 3% Milk
+    aliases:
+      - Three Percent Milk
+    category: dairy
+    typical_unit: carton
+    product_type: fast_consumable
+    is_perishable: true
+  grocery_item:
+    requested_quantity: 2
+    unit: cartons
+```
+
+Both confirmation services make one request only. A pending-duplicate result
+does not refresh or change the existing grocery line; it may mean the catalog
+decision succeeded but the grocery quantity still needs a separate explicit
+decision. Do not retry it. Duplicate-item decisions are not available in this
+release.
 
 ## Development
 
