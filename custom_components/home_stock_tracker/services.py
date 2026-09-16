@@ -21,6 +21,7 @@ from .const import (
     ATTR_IS_PERISHABLE,
     ATTR_LIMIT,
     ATTR_NOTE,
+    ATTR_OPERATION,
     ATTR_PRODUCT,
     ATTR_PRODUCT_ID,
     ATTR_PRODUCT_NAME,
@@ -186,6 +187,34 @@ COMPLETE_GROCERY_PURCHASE_SCHEMA = vol.Schema(
     }
 )
 
+ADJUST_INVENTORY_STOCK_SCHEMA = vol.Any(
+    vol.Schema(
+        {
+            vol.Required(ATTR_CONFIRM): _confirmed,
+            vol.Required(ATTR_PRODUCT_ID): _uuid,
+            vol.Required(ATTR_OPERATION): "set",
+            vol.Required(ATTR_QUANTITY): _positive_finite_number,
+            vol.Optional(ATTR_UNIT): _nonempty_string,
+        }
+    ),
+    vol.Schema(
+        {
+            vol.Required(ATTR_CONFIRM): _confirmed,
+            vol.Required(ATTR_PRODUCT_ID): _uuid,
+            vol.Required(ATTR_OPERATION): "decrement",
+            vol.Required(ATTR_QUANTITY): _positive_finite_number,
+            vol.Optional(ATTR_UNIT): _nonempty_string,
+        }
+    ),
+    vol.Schema(
+        {
+            vol.Required(ATTR_CONFIRM): _confirmed,
+            vol.Required(ATTR_PRODUCT_ID): _uuid,
+            vol.Required(ATTR_OPERATION): "mark_out",
+        }
+    ),
+)
+
 
 def _coordinator(hass: HomeAssistant) -> HomeStockTrackerCoordinator:
     """Return the sole configured coordinator for an explicit service call."""
@@ -279,6 +308,20 @@ async def async_handle_complete_grocery_purchase(
     await coordinator.async_complete_grocery_purchase(
         product_id=call.data[ATTR_PRODUCT_ID],
         grocery_item_ids=call.data[ATTR_GROCERY_ITEM_IDS],
+        quantity=call.data.get(ATTR_QUANTITY),
+        unit=call.data.get(ATTR_UNIT),
+    )
+    await coordinator.async_request_refresh()
+
+
+async def async_handle_adjust_inventory_stock(
+    hass: HomeAssistant, call: ServiceCall
+) -> None:
+    """Route one locally confirmed inventory stock adjustment."""
+    coordinator = _coordinator(hass)
+    await coordinator.async_adjust_inventory_stock(
+        product_id=call.data[ATTR_PRODUCT_ID],
+        operation=call.data[ATTR_OPERATION],
         quantity=call.data.get(ATTR_QUANTITY),
         unit=call.data.get(ATTR_UNIT),
     )

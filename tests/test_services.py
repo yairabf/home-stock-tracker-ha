@@ -20,6 +20,7 @@ from custom_components.home_stock_tracker.const import (
     ATTR_IS_PERISHABLE,
     ATTR_LIMIT,
     ATTR_NOTE,
+    ATTR_OPERATION,
     ATTR_PRODUCT,
     ATTR_PRODUCT_ID,
     ATTR_PRODUCT_NAME,
@@ -39,12 +40,14 @@ from custom_components.home_stock_tracker.services import (
     CONFIRM_GROCERY_PRODUCT_ALIAS_SCHEMA,
     SEARCH_PRODUCTS_SCHEMA,
     COMPLETE_GROCERY_PURCHASE_SCHEMA,
+    ADJUST_INVENTORY_STOCK_SCHEMA,
     async_handle_add_grocery_item,
     async_handle_confirm_grocery_new_product,
     async_handle_confirm_grocery_product_alias,
     async_handle_confirm_grocery_duplicate_as_separate,
     async_handle_search_products,
     async_handle_complete_grocery_purchase,
+    async_handle_adjust_inventory_stock,
 )
 
 PRODUCT_ID = "01234567-89ab-4cde-8f01-23456789abcd"
@@ -130,6 +133,25 @@ def test_complete_grocery_purchase_schema_rejects_invalid_data(data) -> None:
     """Only an explicit, exact purchase selection can reach the coordinator."""
     with pytest.raises(vol.Invalid):
         COMPLETE_GROCERY_PURCHASE_SCHEMA(data)
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        {ATTR_CONFIRM: False, ATTR_PRODUCT_ID: PRODUCT_ID, ATTR_OPERATION: "set", ATTR_QUANTITY: 1},
+        {ATTR_CONFIRM: True, ATTR_PRODUCT_ID: "not-a-uuid", ATTR_OPERATION: "set", ATTR_QUANTITY: 1},
+        {ATTR_CONFIRM: True, ATTR_PRODUCT_ID: PRODUCT_ID, ATTR_OPERATION: "set"},
+        {ATTR_CONFIRM: True, ATTR_PRODUCT_ID: PRODUCT_ID, ATTR_OPERATION: "decrement", ATTR_QUANTITY: 0},
+        {ATTR_CONFIRM: True, ATTR_PRODUCT_ID: PRODUCT_ID, ATTR_OPERATION: "decrement", ATTR_QUANTITY: float("inf")},
+        {ATTR_CONFIRM: True, ATTR_PRODUCT_ID: PRODUCT_ID, ATTR_OPERATION: "mark_out", ATTR_QUANTITY: 1},
+        {ATTR_CONFIRM: True, ATTR_PRODUCT_ID: PRODUCT_ID, ATTR_OPERATION: "mark_out", ATTR_UNIT: "item"},
+        {ATTR_CONFIRM: True, ATTR_PRODUCT_ID: PRODUCT_ID, ATTR_OPERATION: "increment", ATTR_QUANTITY: 1},
+    ],
+)
+def test_adjust_inventory_stock_schema_rejects_invalid_data(data) -> None:
+    """Only explicit source-supported stock operations may reach the coordinator."""
+    with pytest.raises(vol.Invalid):
+        ADJUST_INVENTORY_STOCK_SCHEMA(data)
 
 
 @pytest.mark.parametrize(
@@ -305,6 +327,73 @@ async def test_complete_grocery_purchase_does_not_refresh_after_failure(hass) ->
 
     with pytest.raises(HomeAssistantError, match="grocery purchase failed"):
         await async_handle_complete_grocery_purchase(hass, call)
+
+    coordinator.async_request_refresh.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    ("operation", "quantity", "unit"),
+    [
+        ("set", 2, " cartons "),
+        ("decrement", 1, None),
+        ("mark_out", None, None),
+    ],
+)
+async def test_adjust_inventory_stock_routes_validated_data_to_coordinator(
+    hass, operation: str, quantity: int | None, unit: str | None
+) -> None:
+    """A valid explicit stock operation routes only to the sole coordinator."""
+    coordinator = AsyncMock()
+    hass.data[DOMAIN] = {"entry-id": coordinator}
+    data = {
+        ATTR_CONFIRM: True,
+        ATTR_PRODUCT_ID: PRODUCT_ID.upper(),
+        ATTR_OPERATION: operation,
+    }
+    if quantity is not None:
+        data[ATTR_QUANTITY] = quantity
+    if unit is not None:
+        data[ATTR_UNIT] = unit
+    call = ServiceCall(
+        hass,
+        DOMAIN,
+        "adjust_inventory_stock",
+        ADJUST_INVENTORY_STOCK_SCHEMA(data),
+    )
+
+    await async_handle_adjust_inventory_stock(hass, call)
+
+    coordinator.async_adjust_inventory_stock.assert_awaited_once_with(
+        product_id=PRODUCT_ID,
+        operation=operation,
+        quantity=quantity,
+        unit=None if unit is None else unit.strip(),
+    )
+    coordinator.async_request_refresh.assert_awaited_once_with()
+
+
+async def test_adjust_inventory_stock_does_not_refresh_after_failure(hass) -> None:
+    """An uncertain stock adjustment cannot trigger a follow-up refresh."""
+    coordinator = AsyncMock()
+    coordinator.async_adjust_inventory_stock.side_effect = HomeAssistantError(
+        "Home Stock Tracker inventory adjustment failed"
+    )
+    hass.data[DOMAIN] = {"entry-id": coordinator}
+    call = ServiceCall(
+        hass,
+        DOMAIN,
+        "adjust_inventory_stock",
+        ADJUST_INVENTORY_STOCK_SCHEMA(
+            {
+                ATTR_CONFIRM: True,
+                ATTR_PRODUCT_ID: PRODUCT_ID,
+                ATTR_OPERATION: "mark_out",
+            }
+        ),
+    )
+
+    with pytest.raises(HomeAssistantError, match="inventory adjustment failed"):
+        await async_handle_adjust_inventory_stock(hass, call)
 
     coordinator.async_request_refresh.assert_not_awaited()
 

@@ -26,5 +26,5 @@
     - [x] 3b2. Explicit pending-duplicate decision
   - [ ] 3c. Purchase and inventory mutations
     - [x] 3c1. Confirmed grocery purchase
-    - [ ] 3c2. Confirmed inventory stock adjustment
+    - [x] 3c2. Confirmed inventory stock adjustment
     - [ ] 3c3. Inventory mutation documentation and safeguards

@@ -230,6 +230,39 @@ sensors only after a validated purchase receipt, and never retries a failed or
 uncertain purchase. Do not repeat a failed call automatically, use an item name
 instead of IDs, or use this service for stock adjustments or partial purchases.
 
+## Adjust inventory stock
+
+To correct one product's stock, copy its exact `productId` from an existing
+sensor attribute and make an explicit confirmed call from Developer Tools. The
+service does not resolve names or infer quantities or units.
+
+```yaml
+action: home_stock_tracker.adjust_inventory_stock
+data:
+  confirm: true
+  product_id: <exact productId from a Home Stock Tracker sensor>
+  operation: set
+  quantity: 3
+  unit: liters
+```
+
+Use `set` to record the new total, or `decrement` with a positive `quantity` to
+record consumption. Use `mark_out` only when none remains; it accepts neither
+`quantity` nor `unit`:
+
+```yaml
+action: home_stock_tracker.adjust_inventory_stock
+data:
+  confirm: true
+  product_id: <exact productId from a Home Stock Tracker sensor>
+  operation: mark_out
+```
+
+Each call makes one request and refreshes sensors only after the source returns
+a validated receipt. Do not use it automatically, retry a failed call, invent
+an additive “increase by” operation, or substitute a product name for the exact
+ID.
+
 ## Development
 
 ```bash

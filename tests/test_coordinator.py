@@ -1,6 +1,7 @@
 """Tests for Home Stock Tracker read coordination."""
 
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
+from typing import Literal
 
 import aiohttp
 import pytest
@@ -63,6 +64,24 @@ def _purchase_receipt(
             }
             for grocery_item_id in grocery_item_ids or [GROCERY_ITEM_ID]
         ],
+    }
+
+
+def _stock_adjustment_receipt(
+    *,
+    product_id: str = PRODUCT_ID,
+    event_type: str = "STOCK_SET",
+    event_id: str = "33333333-3333-4333-8333-333333333333",
+    stock_product_id: str | None = None,
+    recorded_event_id: str | None = None,
+) -> dict[str, object]:
+    """Return a minimal valid source receipt for one stock adjustment."""
+    return {
+        "event": {"id": event_id, "productId": product_id, "eventType": event_type},
+        "stock": {
+            "productId": stock_product_id or product_id,
+            "recordedEventId": recorded_event_id or event_id,
+        },
     }
 
 
@@ -442,6 +461,140 @@ async def test_complete_grocery_purchase_fails_closed_for_source_errors(
                 product_id=PRODUCT_ID,
                 grocery_item_ids=[GROCERY_ITEM_ID],
                 quantity=None,
+                unit=None,
+            )
+
+    assert session.post.call_count == 1
+    assert not coordinator.last_update_success
+
+
+@pytest.mark.parametrize(
+    ("operation", "quantity", "unit", "event_type", "expected_json"),
+    [
+        ("set", 2, "cartons", "STOCK_SET", {"operation": "set", "quantity": 2, "unit": "cartons"}),
+        ("decrement", 1, None, "STOCK_CONSUMED", {"operation": "decrement", "quantity": 1}),
+        ("mark_out", None, None, "STOCK_OUT", {"operation": "mark_out"}),
+    ],
+)
+async def test_adjust_inventory_stock_posts_one_exact_request(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    operation: Literal["set", "decrement", "mark_out"],
+    quantity: int | None,
+    unit: str | None,
+    event_type: str,
+    expected_json: dict[str, object],
+) -> None:
+    """Each supported stock operation sends exactly its source contract."""
+    response = MagicMock(status=201)
+    response.json = AsyncMock(return_value=_stock_adjustment_receipt(event_type=event_type))
+    session = _post_session(response)
+    coordinator = HomeStockTrackerCoordinator(hass, config_entry)
+
+    with patch(
+        "custom_components.home_stock_tracker.coordinator.async_get_clientsession",
+        return_value=session,
+    ):
+        await coordinator.async_adjust_inventory_stock(
+            product_id=PRODUCT_ID,
+            operation=operation,
+            quantity=quantity,
+            unit=unit,
+        )
+
+    session.post.assert_called_once_with(
+        f"http://inventory.local/api/v1/inventory/stock/{PRODUCT_ID}",
+        json=expected_json,
+        headers={"Authorization": "Bearer secret-token"},
+        timeout=ANY,
+    )
+
+
+@pytest.mark.parametrize(
+    "receipt",
+    [
+        {},
+        {"event": {"id": "event", "productId": PRODUCT_ID, "eventType": "STOCK_SET"}},
+        _stock_adjustment_receipt(product_id="unexpected-product"),
+        _stock_adjustment_receipt(event_type="STOCK_CONSUMED"),
+        _stock_adjustment_receipt(event_id=""),
+        _stock_adjustment_receipt(stock_product_id="unexpected-product"),
+        _stock_adjustment_receipt(recorded_event_id="other-event"),
+    ],
+)
+async def test_adjust_inventory_stock_rejects_mismatched_receipts(
+    hass: HomeAssistant, config_entry: ConfigEntry, receipt: dict[str, object]
+) -> None:
+    """A receipt must prove the exact requested stock operation before acceptance."""
+    response = MagicMock(status=201)
+    response.json = AsyncMock(return_value=receipt)
+    session = _post_session(response)
+    coordinator = HomeStockTrackerCoordinator(hass, config_entry)
+    coordinator.last_update_success = True
+
+    with patch(
+        "custom_components.home_stock_tracker.coordinator.async_get_clientsession",
+        return_value=session,
+    ):
+        with pytest.raises(HomeAssistantError, match="invalid response"):
+            await coordinator.async_adjust_inventory_stock(
+                product_id=PRODUCT_ID,
+                operation="set",
+                quantity=2,
+                unit=None,
+            )
+
+    assert session.post.call_count == 1
+    assert not coordinator.last_update_success
+
+
+@pytest.mark.parametrize("status", [401, 409])
+async def test_adjust_inventory_stock_fails_closed_for_source_errors(
+    hass: HomeAssistant, config_entry: ConfigEntry, status: int
+) -> None:
+    """Authentication and source conflicts are final and leave data unavailable."""
+    response = MagicMock(status=status)
+    response.raise_for_status.side_effect = aiohttp.ClientResponseError(
+        MagicMock(), (), status=status
+    )
+    session = _post_session(response)
+    coordinator = HomeStockTrackerCoordinator(hass, config_entry)
+    coordinator.last_update_success = True
+
+    with patch(
+        "custom_components.home_stock_tracker.coordinator.async_get_clientsession",
+        return_value=session,
+    ):
+        with pytest.raises(HomeAssistantError):
+            await coordinator.async_adjust_inventory_stock(
+                product_id=PRODUCT_ID,
+                operation="set",
+                quantity=2,
+                unit=None,
+            )
+
+    assert session.post.call_count == 1
+    assert not coordinator.last_update_success
+
+
+async def test_adjust_inventory_stock_does_not_retry_connection_failure(
+    hass: HomeAssistant, config_entry: ConfigEntry
+) -> None:
+    """An uncertain connection failure cannot be retried automatically."""
+    session = MagicMock()
+    session.post.side_effect = aiohttp.ClientConnectionError
+    coordinator = HomeStockTrackerCoordinator(hass, config_entry)
+    coordinator.last_update_success = True
+
+    with patch(
+        "custom_components.home_stock_tracker.coordinator.async_get_clientsession",
+        return_value=session,
+    ):
+        with pytest.raises(HomeAssistantError, match="inventory adjustment failed"):
+            await coordinator.async_adjust_inventory_stock(
+                product_id=PRODUCT_ID,
+                operation="set",
+                quantity=2,
                 unit=None,
             )
 

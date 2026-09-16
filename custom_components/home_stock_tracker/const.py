@@ -17,6 +17,7 @@ PRODUCT_SEARCH_PATH: Final = "/products/search"
 CONFIRM_NEW_PRODUCT_PATH: Final = "/grocery/items/confirm-new-product"
 CONFIRM_PRODUCT_ALIAS_PATH: Final = "/grocery/items/confirm-product-alias"
 COMPLETE_GROCERY_PURCHASE_PATH: Final = "/inventory/purchases/complete"
+INVENTORY_STOCK_PATH: Final = "/inventory/stock"
 SERVICE_ADD_GROCERY_ITEM: Final = "add_grocery_item"
 SERVICE_SEARCH_PRODUCTS: Final = "search_products"
 SERVICE_CONFIRM_GROCERY_NEW_PRODUCT: Final = "confirm_grocery_new_product"
@@ -25,6 +26,7 @@ SERVICE_CONFIRM_GROCERY_DUPLICATE_AS_SEPARATE: Final = (
     "confirm_grocery_duplicate_as_separate"
 )
 SERVICE_COMPLETE_GROCERY_PURCHASE: Final = "complete_grocery_purchase"
+SERVICE_ADJUST_INVENTORY_STOCK: Final = "adjust_inventory_stock"
 ATTR_PRODUCT_NAME: Final = "product_name"
 ATTR_CONFIRM: Final = "confirm"
 ATTR_REQUESTED_QUANTITY: Final = "requested_quantity"
@@ -45,5 +47,6 @@ ATTR_ALIAS: Final = "alias"
 ATTR_PRODUCT_ID: Final = "product_id"
 ATTR_GROCERY_ITEM_IDS: Final = "grocery_item_ids"
 ATTR_QUANTITY: Final = "quantity"
+ATTR_OPERATION: Final = "operation"
 PLATFORMS: Final = [Platform.SENSOR]
 UPDATE_INTERVAL: Final = timedelta(minutes=5)

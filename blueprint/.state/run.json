@@ -1,30 +1,21 @@
 {
   "status": "running",
-  "command": "feature",
-  "activity": "awaiting push approval for confirmed grocery purchase",
-  "boundary": "one explicit confirmed grocery-purchase action; no generic inventory mutations",
-  "target": "3c1. Confirmed grocery purchase",
+  "command": "complete",
+  "activity": "confirmed inventory stock adjustment merged locally; awaiting push approval",
+  "boundary": "one explicit confirmed inventory stock adjustment; no generic inventory mutations",
+  "target": "3c2. Confirmed inventory stock adjustment",
   "branch": "main",
   "steps": {
     "completed": 3,
     "total": 3,
     "current": null
   },
-  "verification": "passed (.venv/bin/python -m pytest -q tests/test_services.py: 41 passed; .venv/bin/python -m pytest -q tests: 85 passed; git diff --check passed)",
-  "next_action": "Await separate explicit approval to push local main to origin.",
+  "verification": "passed (.venv/bin/python -m pytest -q tests/test_services.py: 53 passed; .venv/bin/python -m pytest -q tests/test_coordinator.py: 50 passed; .venv/bin/python -m pytest -q tests: 110 passed; git diff --check passed)",
+  "next_action": "Await explicit approval to push local main to origin.",
   "quality_gates": {
-    "check": "manual; not run",
-    "audit": "manual; not run",
-    "tryGuide": "manual; not run",
+    "check": "not run",
+    "audit": "not run",
+    "tryGuide": "not run",
     "independentReview": "not requested"
-  },
-  "hosted_run": "https://github.com/yairabf/home-stock-tracker-ha/actions/runs/34592084606",
-  "hosted_revision": "3329a0af047085ecba7076b8865643fa46f30813",
-  "hosted_results": {
-    "HACS": "passed",
-    "Hassfest": "passed"
-  },
-  "license_commit": "93ce2a6c00d52ea635168a5ef512a52b282927e8",
-  "archive": "blueprint/history/features/02d-installation-and-support-documentation.md",
-  "license_main_commit": "902c8e1ea3e64279d48df646eb2570c8bb843676"
+  }
 }

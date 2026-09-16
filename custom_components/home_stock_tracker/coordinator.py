@@ -23,6 +23,7 @@ from .const import (
     COMPLETE_GROCERY_PURCHASE_PATH,
     DOMAIN,
     GROCERY_ITEMS_PATH,
+    INVENTORY_STOCK_PATH,
     INVENTORY_PATH,
     LOW_STOCK_PATH,
     PRODUCT_SEARCH_PATH,
@@ -338,6 +339,75 @@ class HomeStockTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if not self._is_completed_grocery_purchase(result, product_id, grocery_item_ids):
             self._set_write_failure("Home Stock Tracker returned an invalid response")
             raise HomeAssistantError("Home Stock Tracker returned an invalid response")
+
+    async def async_adjust_inventory_stock(
+        self,
+        *,
+        product_id: str,
+        operation: Literal["set", "decrement", "mark_out"],
+        quantity: float | int | None,
+        unit: str | None,
+    ) -> None:
+        """Apply one explicit stock operation without retrying an uncertain write."""
+        payload: dict[str, Any] = {"operation": operation}
+        if quantity is not None:
+            payload["quantity"] = quantity
+        if unit is not None:
+            payload["unit"] = unit
+
+        session = async_get_clientsession(self.hass)
+        try:
+            async with session.post(
+                f"{self._base_url}{API_VERSION_PATH}{INVENTORY_STOCK_PATH}/{product_id}",
+                json=payload,
+                headers=self._headers,
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as response:
+                if response.status == 401:
+                    self._set_write_failure("Home Stock Tracker authentication failed")
+                    raise HomeAssistantError(
+                        "Home Stock Tracker authentication failed"
+                    )
+                response.raise_for_status()
+                result = await response.json()
+        except HomeAssistantError:
+            raise
+        except (aiohttp.ClientError, asyncio.TimeoutError, ValueError):
+            self._set_write_failure("Home Stock Tracker inventory adjustment failed")
+            raise HomeAssistantError(
+                "Home Stock Tracker inventory adjustment failed"
+            ) from None
+
+        if not self._is_stock_adjustment_receipt(result, product_id, operation):
+            self._set_write_failure("Home Stock Tracker returned an invalid response")
+            raise HomeAssistantError("Home Stock Tracker returned an invalid response")
+
+    @staticmethod
+    def _is_stock_adjustment_receipt(
+        result: Any,
+        product_id: str,
+        operation: Literal["set", "decrement", "mark_out"],
+    ) -> bool:
+        """Accept only the event and projection produced by the requested operation."""
+        expected_event_type = {
+            "set": "STOCK_SET",
+            "decrement": "STOCK_CONSUMED",
+            "mark_out": "STOCK_OUT",
+        }[operation]
+        if not isinstance(result, Mapping):
+            return False
+        event = result.get("event")
+        stock = result.get("stock")
+        return (
+            isinstance(event, Mapping)
+            and isinstance(event.get("id"), str)
+            and bool(event["id"])
+            and event.get("productId") == product_id
+            and event.get("eventType") == expected_event_type
+            and isinstance(stock, Mapping)
+            and stock.get("productId") == product_id
+            and stock.get("recordedEventId") == event["id"]
+        )
 
     @staticmethod
     def _is_completed_grocery_purchase(
