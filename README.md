@@ -106,8 +106,8 @@ invalid-response failures make all entities unavailable rather than showing
 stale data as current.
 
 It uses authenticated `GET` requests for polling. Its only source-data writes
-are the explicit, confirmed grocery and catalog services documented below; it
-does not call MCP.
+are the explicit, confirmed grocery, catalog, and purchase services documented
+below; it does not call MCP.
 
 ## Add a grocery item
 
@@ -205,6 +205,30 @@ integration sends a single request with its fixed `create_separate` policy, then
 refreshes its sensors only after the source confirms creation. It does not retry
 or fall back to a quantity change if the source still requires a decision or
 product resolution.
+
+## Complete a grocery purchase
+
+To mark pending grocery items as purchased, inspect the `items` attribute of
+`sensor.pending_groceries` and copy the exact `productId` and pending item `id`
+values. Then call the explicit confirmation service from Developer Tools:
+
+```yaml
+action: home_stock_tracker.complete_grocery_purchase
+data:
+  confirm: true
+  product_id: <exact productId from sensor.pending_groceries>
+  grocery_item_ids:
+    - <exact pending item id from sensor.pending_groceries>
+  quantity: 2
+  unit: cartons
+```
+
+`quantity` and `unit` are optional; omit both to preserve the source service's
+requested measurement. Each call accepts one product and one or more exact
+pending item IDs for that product. It makes one request only, refreshes the
+sensors only after a validated purchase receipt, and never retries a failed or
+uncertain purchase. Do not repeat a failed call automatically, use an item name
+instead of IDs, or use this service for stock adjustments or partial purchases.
 
 ## Development
 

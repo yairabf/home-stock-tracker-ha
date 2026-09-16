@@ -12,6 +12,7 @@ from homeassistant.exceptions import HomeAssistantError
 
 from .const import (
     ATTR_CONFIRM,
+    ATTR_GROCERY_ITEM_IDS,
     ATTR_ALIASES,
     ATTR_ALIAS,
     ATTR_CANONICAL_NAME,
@@ -21,9 +22,11 @@ from .const import (
     ATTR_LIMIT,
     ATTR_NOTE,
     ATTR_PRODUCT,
+    ATTR_PRODUCT_ID,
     ATTR_PRODUCT_NAME,
     ATTR_PRODUCT_TYPE,
     ATTR_QUERY,
+    ATTR_QUANTITY,
     ATTR_REQUESTED_QUANTITY,
     ATTR_TARGET_PRODUCT_ID,
     ATTR_TYPICAL_UNIT,
@@ -59,6 +62,15 @@ def _positive_finite_number(value: Any) -> float | int:
     return value
 
 
+def _nonnegative_finite_number(value: Any) -> float | int:
+    """Accept a finite actual purchase quantity, including zero."""
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        raise vol.Invalid("must be a non-negative finite number")
+    if not math.isfinite(value) or value < 0:
+        raise vol.Invalid("must be a non-negative finite number")
+    return value
+
+
 def _positive_integer(value: Any) -> int:
     """Accept an integral search limit within the source-service range."""
     if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= 20:
@@ -81,6 +93,16 @@ def _uuid(value: Any) -> str:
         return str(UUID(value))
     except ValueError as error:
         raise vol.Invalid("must be a UUID") from error
+
+
+def _nonempty_unique_uuid_list(value: Any) -> list[str]:
+    """Normalize an explicit, non-empty selection of grocery item UUIDs."""
+    if not isinstance(value, list) or not value:
+        raise vol.Invalid("must be a non-empty list of UUIDs")
+    normalized = [_uuid(item) for item in value]
+    if len(set(normalized)) != len(normalized):
+        raise vol.Invalid("must not contain duplicate UUIDs")
+    return normalized
 
 
 GROCERY_ITEM_SCHEMA = vol.Schema(
@@ -151,6 +173,16 @@ CONFIRM_GROCERY_DUPLICATE_AS_SEPARATE_SCHEMA = vol.Schema(
         vol.Optional(ATTR_REQUESTED_QUANTITY): _positive_finite_number,
         vol.Optional(ATTR_UNIT): _nonempty_string,
         vol.Optional(ATTR_NOTE): _nonempty_string,
+    }
+)
+
+COMPLETE_GROCERY_PURCHASE_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_CONFIRM): _confirmed,
+        vol.Required(ATTR_PRODUCT_ID): _uuid,
+        vol.Required(ATTR_GROCERY_ITEM_IDS): _nonempty_unique_uuid_list,
+        vol.Optional(ATTR_QUANTITY): _nonnegative_finite_number,
+        vol.Optional(ATTR_UNIT): _nonempty_string,
     }
 )
 
@@ -237,6 +269,20 @@ async def async_handle_confirm_grocery_duplicate_as_separate(
     if outcome == "product_resolution_required":
         raise HomeAssistantError("The grocery item needs product resolution")
     raise HomeAssistantError("Home Stock Tracker returned an invalid response")
+
+
+async def async_handle_complete_grocery_purchase(
+    hass: HomeAssistant, call: ServiceCall
+) -> None:
+    """Route one locally confirmed grocery purchase to the coordinator."""
+    coordinator = _coordinator(hass)
+    await coordinator.async_complete_grocery_purchase(
+        product_id=call.data[ATTR_PRODUCT_ID],
+        grocery_item_ids=call.data[ATTR_GROCERY_ITEM_IDS],
+        quantity=call.data.get(ATTR_QUANTITY),
+        unit=call.data.get(ATTR_UNIT),
+    )
+    await coordinator.async_request_refresh()
 
 
 async def _handle_catalog_confirmation_outcome(

@@ -11,6 +11,7 @@ from .const import (
     SERVICE_CONFIRM_GROCERY_PRODUCT_ALIAS,
     SERVICE_CONFIRM_GROCERY_DUPLICATE_AS_SEPARATE,
     SERVICE_SEARCH_PRODUCTS,
+    SERVICE_COMPLETE_GROCERY_PURCHASE,
 )
 from .coordinator import HomeStockTrackerCoordinator
 from .services import (
@@ -18,11 +19,13 @@ from .services import (
     CONFIRM_GROCERY_NEW_PRODUCT_SCHEMA,
     CONFIRM_GROCERY_PRODUCT_ALIAS_SCHEMA,
     CONFIRM_GROCERY_DUPLICATE_AS_SEPARATE_SCHEMA,
+    COMPLETE_GROCERY_PURCHASE_SCHEMA,
     SEARCH_PRODUCTS_SCHEMA,
     async_handle_add_grocery_item,
     async_handle_confirm_grocery_new_product,
     async_handle_confirm_grocery_product_alias,
     async_handle_confirm_grocery_duplicate_as_separate,
+    async_handle_complete_grocery_purchase,
     async_handle_search_products,
 )
 
@@ -64,6 +67,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             lambda call: async_handle_confirm_grocery_duplicate_as_separate(hass, call),
             schema=CONFIRM_GROCERY_DUPLICATE_AS_SEPARATE_SCHEMA,
         )
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_COMPLETE_GROCERY_PURCHASE,
+            lambda call: async_handle_complete_grocery_purchase(hass, call),
+            schema=COMPLETE_GROCERY_PURCHASE_SCHEMA,
+        )
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
@@ -81,4 +90,5 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             hass.services.async_remove(
                 DOMAIN, SERVICE_CONFIRM_GROCERY_DUPLICATE_AS_SEPARATE
             )
+            hass.services.async_remove(DOMAIN, SERVICE_COMPLETE_GROCERY_PURCHASE)
     return unloaded

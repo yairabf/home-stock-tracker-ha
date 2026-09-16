@@ -20,6 +20,7 @@ from .const import (
     CONF_BASE_URL,
     CONFIRM_NEW_PRODUCT_PATH,
     CONFIRM_PRODUCT_ALIAS_PATH,
+    COMPLETE_GROCERY_PURCHASE_PATH,
     DOMAIN,
     GROCERY_ITEMS_PATH,
     INVENTORY_PATH,
@@ -294,6 +295,83 @@ class HomeStockTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             grocery_item["note"] = note
 
         return await self._async_post_grocery_addition(payload)
+
+    async def async_complete_grocery_purchase(
+        self,
+        *,
+        product_id: str,
+        grocery_item_ids: list[str],
+        quantity: float | int | None,
+        unit: str | None,
+    ) -> None:
+        """Complete one explicit grocery purchase without retrying it."""
+        payload: dict[str, Any] = {
+            "productId": product_id,
+            "groceryItemIds": grocery_item_ids,
+        }
+        if quantity is not None:
+            payload["quantity"] = quantity
+        if unit is not None:
+            payload["unit"] = unit
+
+        session = async_get_clientsession(self.hass)
+        try:
+            async with session.post(
+                f"{self._base_url}{API_VERSION_PATH}{COMPLETE_GROCERY_PURCHASE_PATH}",
+                json=payload,
+                headers=self._headers,
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as response:
+                if response.status == 401:
+                    self._set_write_failure("Home Stock Tracker authentication failed")
+                    raise HomeAssistantError(
+                        "Home Stock Tracker authentication failed"
+                    )
+                response.raise_for_status()
+                result = await response.json()
+        except HomeAssistantError:
+            raise
+        except (aiohttp.ClientError, asyncio.TimeoutError, ValueError):
+            self._set_write_failure("Home Stock Tracker grocery purchase failed")
+            raise HomeAssistantError("Home Stock Tracker grocery purchase failed") from None
+
+        if not self._is_completed_grocery_purchase(result, product_id, grocery_item_ids):
+            self._set_write_failure("Home Stock Tracker returned an invalid response")
+            raise HomeAssistantError("Home Stock Tracker returned an invalid response")
+
+    @staticmethod
+    def _is_completed_grocery_purchase(
+        result: Any, product_id: str, grocery_item_ids: list[str]
+    ) -> bool:
+        """Accept only a receipt for the exact grocery purchase request."""
+        if not isinstance(result, Mapping):
+            return False
+        event = result.get("event")
+        grocery_items = result.get("groceryItems")
+        if (
+            not isinstance(event, Mapping)
+            or not isinstance(event.get("id"), str)
+            or event.get("productId") != product_id
+            or event.get("eventType") != "PURCHASED"
+            or not isinstance(grocery_items, list)
+        ):
+            return False
+
+        returned_ids: set[str] = set()
+        for grocery_item in grocery_items:
+            if (
+                not isinstance(grocery_item, Mapping)
+                or not isinstance(grocery_item.get("id"), str)
+                or grocery_item.get("status") != "purchased"
+                or grocery_item.get("relatedInventoryEventId") != event["id"]
+            ):
+                return False
+            returned_ids.add(grocery_item["id"])
+
+        return (
+            len(returned_ids) == len(grocery_items)
+            and returned_ids == set(grocery_item_ids)
+        )
 
     async def _async_post_grocery_addition(
         self, payload: dict[str, Any]

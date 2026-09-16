@@ -1,17 +1,17 @@
 {
   "status": "running",
   "command": "feature",
-  "activity": "approved to push completed feature 3b2 on main",
-  "boundary": "one explicit confirmed create-separate grocery action; no existing-item mutations",
-  "target": "3b2. Explicit pending-duplicate decision (merged locally)",
+  "activity": "awaiting push approval for confirmed grocery purchase",
+  "boundary": "one explicit confirmed grocery-purchase action; no generic inventory mutations",
+  "target": "3c1. Confirmed grocery purchase",
   "branch": "main",
   "steps": {
     "completed": 3,
     "total": 3,
     "current": null
   },
-  "verification": "passed (.venv/bin/python -m pytest -q tests; 65 passed; git diff --check passed)",
-  "next_action": "Push local main to origin after explicit user approval.",
+  "verification": "passed (.venv/bin/python -m pytest -q tests/test_services.py: 41 passed; .venv/bin/python -m pytest -q tests: 85 passed; git diff --check passed)",
+  "next_action": "Await separate explicit approval to push local main to origin.",
   "quality_gates": {
     "check": "manual; not run",
     "audit": "manual; not run",

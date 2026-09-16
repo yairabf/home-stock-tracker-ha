@@ -15,14 +15,17 @@ from custom_components.home_stock_tracker.const import (
     ATTR_CANONICAL_NAME,
     ATTR_CATEGORY,
     ATTR_CONFIRM,
+    ATTR_GROCERY_ITEM_IDS,
     ATTR_GROCERY_ITEM,
     ATTR_IS_PERISHABLE,
     ATTR_LIMIT,
     ATTR_NOTE,
     ATTR_PRODUCT,
+    ATTR_PRODUCT_ID,
     ATTR_PRODUCT_NAME,
     ATTR_PRODUCT_TYPE,
     ATTR_QUERY,
+    ATTR_QUANTITY,
     ATTR_REQUESTED_QUANTITY,
     ATTR_TARGET_PRODUCT_ID,
     ATTR_TYPICAL_UNIT,
@@ -35,12 +38,17 @@ from custom_components.home_stock_tracker.services import (
     CONFIRM_GROCERY_NEW_PRODUCT_SCHEMA,
     CONFIRM_GROCERY_PRODUCT_ALIAS_SCHEMA,
     SEARCH_PRODUCTS_SCHEMA,
+    COMPLETE_GROCERY_PURCHASE_SCHEMA,
     async_handle_add_grocery_item,
     async_handle_confirm_grocery_new_product,
     async_handle_confirm_grocery_product_alias,
     async_handle_confirm_grocery_duplicate_as_separate,
     async_handle_search_products,
+    async_handle_complete_grocery_purchase,
 )
+
+PRODUCT_ID = "01234567-89ab-4cde-8f01-23456789abcd"
+GROCERY_ITEM_ID = "11111111-1111-4111-8111-111111111111"
 
 
 def _product() -> dict[str, object]:
@@ -103,6 +111,25 @@ def test_duplicate_decision_schema_rejects_unconfirmed_or_invalid_data(data) -> 
     """A separate-line decision needs an explicit valid local confirmation."""
     with pytest.raises(vol.Invalid):
         CONFIRM_GROCERY_DUPLICATE_AS_SEPARATE_SCHEMA(data)
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        {ATTR_CONFIRM: False, ATTR_PRODUCT_ID: PRODUCT_ID, ATTR_GROCERY_ITEM_IDS: [GROCERY_ITEM_ID]},
+        {ATTR_CONFIRM: True, ATTR_PRODUCT_ID: "not-a-uuid", ATTR_GROCERY_ITEM_IDS: [GROCERY_ITEM_ID]},
+        {ATTR_CONFIRM: True, ATTR_PRODUCT_ID: PRODUCT_ID, ATTR_GROCERY_ITEM_IDS: []},
+        {ATTR_CONFIRM: True, ATTR_PRODUCT_ID: PRODUCT_ID, ATTR_GROCERY_ITEM_IDS: [GROCERY_ITEM_ID, GROCERY_ITEM_ID]},
+        {ATTR_CONFIRM: True, ATTR_PRODUCT_ID: PRODUCT_ID, ATTR_GROCERY_ITEM_IDS: ["not-a-uuid"]},
+        {ATTR_CONFIRM: True, ATTR_PRODUCT_ID: PRODUCT_ID, ATTR_GROCERY_ITEM_IDS: [GROCERY_ITEM_ID], ATTR_QUANTITY: -1},
+        {ATTR_CONFIRM: True, ATTR_PRODUCT_ID: PRODUCT_ID, ATTR_GROCERY_ITEM_IDS: [GROCERY_ITEM_ID], ATTR_QUANTITY: float("inf")},
+        {ATTR_CONFIRM: True, ATTR_PRODUCT_ID: PRODUCT_ID, ATTR_GROCERY_ITEM_IDS: [GROCERY_ITEM_ID], ATTR_UNIT: "  "},
+    ],
+)
+def test_complete_grocery_purchase_schema_rejects_invalid_data(data) -> None:
+    """Only an explicit, exact purchase selection can reach the coordinator."""
+    with pytest.raises(vol.Invalid):
+        COMPLETE_GROCERY_PURCHASE_SCHEMA(data)
 
 
 @pytest.mark.parametrize(
@@ -224,6 +251,62 @@ async def test_duplicate_decision_routes_validated_data_to_coordinator(hass) -> 
         note="weekly shop",
     )
     coordinator.async_request_refresh.assert_awaited_once_with()
+
+
+async def test_complete_grocery_purchase_routes_validated_data_to_coordinator(hass) -> None:
+    """A valid confirmed purchase routes only to the sole coordinator."""
+    coordinator = AsyncMock()
+    hass.data[DOMAIN] = {"entry-id": coordinator}
+    call = ServiceCall(
+        hass,
+        DOMAIN,
+        "complete_grocery_purchase",
+        COMPLETE_GROCERY_PURCHASE_SCHEMA(
+            {
+                ATTR_CONFIRM: True,
+                ATTR_PRODUCT_ID: PRODUCT_ID.upper(),
+                ATTR_GROCERY_ITEM_IDS: [GROCERY_ITEM_ID.upper()],
+                ATTR_QUANTITY: 0,
+                ATTR_UNIT: " cartons ",
+            }
+        ),
+    )
+
+    await async_handle_complete_grocery_purchase(hass, call)
+
+    coordinator.async_complete_grocery_purchase.assert_awaited_once_with(
+        product_id=PRODUCT_ID,
+        grocery_item_ids=[GROCERY_ITEM_ID],
+        quantity=0,
+        unit="cartons",
+    )
+    coordinator.async_request_refresh.assert_awaited_once_with()
+
+
+async def test_complete_grocery_purchase_does_not_refresh_after_failure(hass) -> None:
+    """A failed or uncertain purchase cannot trigger a follow-up action."""
+    coordinator = AsyncMock()
+    coordinator.async_complete_grocery_purchase.side_effect = HomeAssistantError(
+        "Home Stock Tracker grocery purchase failed"
+    )
+    hass.data[DOMAIN] = {"entry-id": coordinator}
+    call = ServiceCall(
+        hass,
+        DOMAIN,
+        "complete_grocery_purchase",
+        COMPLETE_GROCERY_PURCHASE_SCHEMA(
+            {
+                ATTR_CONFIRM: True,
+                ATTR_PRODUCT_ID: PRODUCT_ID,
+                ATTR_GROCERY_ITEM_IDS: [GROCERY_ITEM_ID],
+            }
+        ),
+    )
+
+    with pytest.raises(HomeAssistantError, match="grocery purchase failed"):
+        await async_handle_complete_grocery_purchase(hass, call)
+
+    coordinator.async_request_refresh.assert_not_awaited()
 
 
 @pytest.mark.parametrize(

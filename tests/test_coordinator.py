@@ -41,6 +41,31 @@ def _catalog_result(outcome: str = "created") -> dict[str, object]:
     }
 
 
+PRODUCT_ID = "01234567-89ab-4cde-8f01-23456789abcd"
+GROCERY_ITEM_ID = "11111111-1111-4111-8111-111111111111"
+
+
+def _purchase_receipt(
+    *,
+    product_id: str = PRODUCT_ID,
+    grocery_item_ids: list[str] | None = None,
+    event_type: str = "PURCHASED",
+) -> dict[str, object]:
+    """Return a minimal valid receipt for one confirmed grocery purchase."""
+    event_id = "22222222-2222-4222-8222-222222222222"
+    return {
+        "event": {"id": event_id, "productId": product_id, "eventType": event_type},
+        "groceryItems": [
+            {
+                "id": grocery_item_id,
+                "status": "purchased",
+                "relatedInventoryEventId": event_id,
+            }
+            for grocery_item_id in grocery_item_ids or [GROCERY_ITEM_ID]
+        ],
+    }
+
+
 async def test_refresh_publishes_all_read_models_atomically(
     hass: HomeAssistant, config_entry: ConfigEntry, aioclient_mock
 ) -> None:
@@ -297,6 +322,131 @@ async def test_duplicate_decision_omits_absent_optional_fields(
         "productName": "Milk",
         "groceryItem": {"ifPendingExists": "create_separate"},
     }
+
+
+async def test_complete_grocery_purchase_posts_one_exact_request(
+    hass: HomeAssistant, config_entry: ConfigEntry
+) -> None:
+    """A completed purchase sends no local-only or generic inventory fields."""
+    response = MagicMock(status=201)
+    response.json = AsyncMock(return_value=_purchase_receipt())
+    session = _post_session(response)
+    coordinator = HomeStockTrackerCoordinator(hass, config_entry)
+
+    with patch(
+        "custom_components.home_stock_tracker.coordinator.async_get_clientsession",
+        return_value=session,
+    ):
+        await coordinator.async_complete_grocery_purchase(
+            product_id=PRODUCT_ID,
+            grocery_item_ids=[GROCERY_ITEM_ID],
+            quantity=2,
+            unit="cartons",
+        )
+
+    session.post.assert_called_once_with(
+        "http://inventory.local/api/v1/inventory/purchases/complete",
+        json={
+            "productId": PRODUCT_ID,
+            "groceryItemIds": [GROCERY_ITEM_ID],
+            "quantity": 2,
+            "unit": "cartons",
+        },
+        headers={"Authorization": "Bearer secret-token"},
+        timeout=ANY,
+    )
+
+
+async def test_complete_grocery_purchase_omits_absent_measurements(
+    hass: HomeAssistant, config_entry: ConfigEntry
+) -> None:
+    """Omitted measurement fields are never replaced with inferred values."""
+    response = MagicMock(status=201)
+    response.json = AsyncMock(return_value=_purchase_receipt())
+    session = _post_session(response)
+    coordinator = HomeStockTrackerCoordinator(hass, config_entry)
+
+    with patch(
+        "custom_components.home_stock_tracker.coordinator.async_get_clientsession",
+        return_value=session,
+    ):
+        await coordinator.async_complete_grocery_purchase(
+            product_id=PRODUCT_ID,
+            grocery_item_ids=[GROCERY_ITEM_ID],
+            quantity=None,
+            unit=None,
+        )
+
+    assert session.post.call_args.kwargs["json"] == {
+        "productId": PRODUCT_ID,
+        "groceryItemIds": [GROCERY_ITEM_ID],
+    }
+
+
+@pytest.mark.parametrize(
+    "receipt",
+    [
+        {},
+        _purchase_receipt(product_id="unexpected-product"),
+        _purchase_receipt(event_type="RESTOCKED"),
+        {"event": {"id": "event", "productId": PRODUCT_ID, "eventType": "PURCHASED"}, "groceryItems": []},
+        {"event": {"id": "event", "productId": PRODUCT_ID, "eventType": "PURCHASED"}, "groceryItems": [{"id": GROCERY_ITEM_ID, "status": "pending", "relatedInventoryEventId": "event"}]},
+        {"event": {"id": "event", "productId": PRODUCT_ID, "eventType": "PURCHASED"}, "groceryItems": [{"id": "unrequested", "status": "purchased", "relatedInventoryEventId": "event"}]},
+    ],
+)
+async def test_complete_grocery_purchase_rejects_mismatched_receipts(
+    hass: HomeAssistant, config_entry: ConfigEntry, receipt: dict[str, object]
+) -> None:
+    """A receipt must prove the exact requested purchase before it is accepted."""
+    response = MagicMock(status=201)
+    response.json = AsyncMock(return_value=receipt)
+    session = _post_session(response)
+    coordinator = HomeStockTrackerCoordinator(hass, config_entry)
+    coordinator.last_update_success = True
+
+    with patch(
+        "custom_components.home_stock_tracker.coordinator.async_get_clientsession",
+        return_value=session,
+    ):
+        with pytest.raises(HomeAssistantError, match="invalid response"):
+            await coordinator.async_complete_grocery_purchase(
+                product_id=PRODUCT_ID,
+                grocery_item_ids=[GROCERY_ITEM_ID],
+                quantity=None,
+                unit=None,
+            )
+
+    assert session.post.call_count == 1
+    assert not coordinator.last_update_success
+
+
+@pytest.mark.parametrize("status", [401, 409])
+async def test_complete_grocery_purchase_fails_closed_for_source_errors(
+    hass: HomeAssistant, config_entry: ConfigEntry, status: int
+) -> None:
+    """Authentication and source conflicts make data unavailable without retry."""
+    response = MagicMock(status=status)
+    response.raise_for_status.side_effect = aiohttp.ClientResponseError(
+        MagicMock(), (), status=status
+    )
+    session = _post_session(response)
+    coordinator = HomeStockTrackerCoordinator(hass, config_entry)
+    coordinator.last_update_success = True
+
+    with patch(
+        "custom_components.home_stock_tracker.coordinator.async_get_clientsession",
+        return_value=session,
+    ):
+        with pytest.raises(HomeAssistantError):
+            await coordinator.async_complete_grocery_purchase(
+                product_id=PRODUCT_ID,
+                grocery_item_ids=[GROCERY_ITEM_ID],
+                quantity=None,
+                unit=None,
+            )
+
+    assert session.post.call_count == 1
+    assert not coordinator.last_update_success
 
 
 @pytest.mark.parametrize(
