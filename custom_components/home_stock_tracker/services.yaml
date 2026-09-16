@@ -1,0 +1,78 @@
+complete_grocery_purchase:
+  name: Complete grocery purchase
+  description: >-
+    Mark selected pending grocery items as purchased after explicit confirmation.
+    Use exact source UUIDs from the pending-groceries sensor; failed or uncertain
+    requests must not be retried.
+  fields:
+    confirm:
+      name: Confirm purchase
+      description: Must be true before Home Assistant sends the write request.
+      required: true
+      selector:
+        boolean:
+    product_id:
+      name: Product ID
+      description: Exact source product UUID from a selected pending grocery item.
+      required: true
+      selector:
+        text:
+    grocery_item_ids:
+      name: Grocery item IDs
+      description: One or more exact pending grocery-item UUIDs for that product.
+      required: true
+      selector:
+        object:
+    quantity:
+      name: Actual quantity
+      description: Optional finite quantity of zero or more; omit to retain the requested measurement.
+      selector:
+        number:
+          min: 0
+          mode: box
+    unit:
+      name: Unit
+      description: Optional non-empty actual-purchase unit.
+      selector:
+        text:
+
+adjust_inventory_stock:
+  name: Adjust inventory stock
+  description: >-
+    Correct one product's stock after explicit confirmation. Use set for an
+    explicit total, decrement for consumption, or mark_out when none remains.
+    Failed or uncertain requests must not be retried.
+  fields:
+    confirm:
+      name: Confirm stock adjustment
+      description: Must be true before Home Assistant sends the write request.
+      required: true
+      selector:
+        boolean:
+    product_id:
+      name: Product ID
+      description: Exact source product UUID from a Home Stock Tracker sensor.
+      required: true
+      selector:
+        text:
+    operation:
+      name: Operation
+      description: Set a total, decrement a tracked quantity, or mark the product out.
+      required: true
+      selector:
+        select:
+          options:
+            - set
+            - decrement
+            - mark_out
+    quantity:
+      name: Quantity
+      description: Required finite positive quantity for set or decrement; omit for mark_out.
+      selector:
+        number:
+          mode: box
+    unit:
+      name: Unit
+      description: Optional non-empty unit for set or decrement; omit for mark_out.
+      selector:
+        text:

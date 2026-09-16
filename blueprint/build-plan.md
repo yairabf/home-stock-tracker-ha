@@ -19,12 +19,12 @@
 
 ## Approved write-action rollout
 
-- [ ] 3. Write actions from Home Assistant
+- [x] 3. Write actions from Home Assistant
   - [x] 3a. Confirmed grocery-list addition
   - [x] 3b. Explicit catalog resolution and duplicate-item decisions
     - [x] 3b1. Explicit catalog-candidate selection
     - [x] 3b2. Explicit pending-duplicate decision
-  - [ ] 3c. Purchase and inventory mutations
+  - [x] 3c. Purchase and inventory mutations
     - [x] 3c1. Confirmed grocery purchase
     - [x] 3c2. Confirmed inventory stock adjustment
-    - [ ] 3c3. Inventory mutation documentation and safeguards
+    - [x] 3c3. Inventory mutation documentation and safeguards

@@ -206,6 +206,23 @@ refreshes its sensors only after the source confirms creation. It does not retry
 or fall back to a quantity change if the source still requires a decision or
 product resolution.
 
+## Inventory write safety
+
+All inventory writes are deliberate Developer Tools actions. Before submitting
+one, copy the exact IDs from a fresh Home Stock Tracker sensor attribute; never
+replace an ID with a product name or an inferred value.
+
+| If you need to… | Use | Exact selection |
+| --- | --- | --- |
+| Mark pending grocery lines as bought | `complete_grocery_purchase` | One pending line's `productId` and one or more pending line `id` values from `sensor.pending_groceries` |
+| Correct a known stock total, record consumption, or report none remaining | `adjust_inventory_stock` | One `productId` from an existing Home Stock Tracker inventory sensor record |
+
+Every call requires `confirm: true`, makes one source request, and refreshes
+sensors only after a validated receipt. If a call returns an error, entities
+become unavailable, or the result is uncertain, stop: do not retry, repeat,
+fall back to another mutation, or automate the call. Re-read the source data
+and resolve the failure before making a new, explicit decision.
+
 ## Complete a grocery purchase
 
 To mark pending grocery items as purchased, inspect the `items` attribute of
@@ -226,9 +243,8 @@ data:
 `quantity` and `unit` are optional; omit both to preserve the source service's
 requested measurement. Each call accepts one product and one or more exact
 pending item IDs for that product. It makes one request only, refreshes the
-sensors only after a validated purchase receipt, and never retries a failed or
-uncertain purchase. Do not repeat a failed call automatically, use an item name
-instead of IDs, or use this service for stock adjustments or partial purchases.
+sensors only after a validated purchase receipt. Use it only for selected
+pending lines—not stock corrections or partial purchases.
 
 ## Adjust inventory stock
 
@@ -247,8 +263,8 @@ data:
 ```
 
 Use `set` to record the new total, or `decrement` with a positive `quantity` to
-record consumption. Use `mark_out` only when none remains; it accepts neither
-`quantity` nor `unit`:
+record consumption. There is no additive “increase by” operation. Use
+`mark_out` only when none remains; it accepts neither `quantity` nor `unit`:
 
 ```yaml
 action: home_stock_tracker.adjust_inventory_stock
@@ -258,10 +274,9 @@ data:
   operation: mark_out
 ```
 
-Each call makes one request and refreshes sensors only after the source returns
-a validated receipt. Do not use it automatically, retry a failed call, invent
-an additive “increase by” operation, or substitute a product name for the exact
-ID.
+Use this service only when the stock fact is known. Do not use it automatically,
+retry a failed call, invent an additive operation, or substitute a product name
+for the exact ID.
 
 ## Development
 

@@ -1,16 +1,16 @@
 {
   "status": "running",
   "command": "complete",
-  "activity": "confirmed inventory stock adjustment merged locally; awaiting push approval",
+  "activity": "inventory mutation documentation and safeguards merged locally; awaiting push approval",
   "boundary": "one explicit confirmed inventory stock adjustment; no generic inventory mutations",
-  "target": "3c2. Confirmed inventory stock adjustment",
+  "target": "3c3. Inventory mutation documentation and safeguards",
   "branch": "main",
   "steps": {
     "completed": 3,
     "total": 3,
     "current": null
   },
-  "verification": "passed (.venv/bin/python -m pytest -q tests/test_services.py: 53 passed; .venv/bin/python -m pytest -q tests/test_coordinator.py: 50 passed; .venv/bin/python -m pytest -q tests: 110 passed; git diff --check passed)",
+  "verification": "passed (.venv/bin/python -m pytest -q tests/test_services_metadata.py: 1 passed; .venv/bin/python -m pytest -q tests: 111 passed; git diff --check passed)",
   "next_action": "Await explicit approval to push local main to origin.",
   "quality_gates": {
     "check": "not run",
