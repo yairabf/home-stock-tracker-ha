@@ -1,0 +1,104 @@
+name: OpenCodeReview
+
+on:
+  workflow_run:
+    workflows: [OpenCodeReview PR signal]
+    types: [completed]
+
+permissions: {}
+
+concurrency:
+  group: open-code-review-${{ github.event.workflow_run.pull_requests[0].number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  review:
+    name: OpenCodeReview (advisory)
+    if: >-
+      vars.OCR_ENABLED != 'false' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.id == github.event.repository.id &&
+      github.event.workflow_run.pull_requests[0].number &&
+      !github.event.workflow_run.pull_requests[1]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Verify the current pull request
+        id: pr
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+          SIGNAL_HEAD: ${{ github.event.workflow_run.head_sha }}
+          REPO_ID: ${{ github.event.repository.id }}
+        run: |
+          if [[ ! "$PR_NUMBER" =~ ^[1-9][0-9]*$ || ! "$SIGNAL_HEAD" =~ ^[0-9a-f]{40}$ ]]; then
+            echo '::notice::Skipping review because the signal has no usable PR number or head.'
+            exit 0
+          fi
+
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")
+          if jq -e --arg repo_id "$REPO_ID" --arg head "$SIGNAL_HEAD" '
+            .state == "open" and .draft == false and
+            (.head.repo.id | tostring) == $repo_id and
+            (.base.repo.id | tostring) == $repo_id and
+            .base.ref == "main" and .head.sha == $head and
+            .user.login != "dependabot[bot]"
+          ' <<< "$pr" >/dev/null; then
+            printf 'number=%s\nhead=%s\n' "$PR_NUMBER" "$SIGNAL_HEAD" >> "$GITHUB_OUTPUT"
+          else
+            echo '::notice::Skipping review because the PR is no longer eligible or its head changed.'
+          fi
+
+      - name: Check reviewer configuration
+        id: configuration
+        if: steps.pr.outputs.number != ''
+        shell: bash
+        env:
+          OCR_LLM_AUTH_TOKEN: ${{ secrets.OCR_LLM_AUTH_TOKEN }}
+        run: |
+          if [[ -n "$OCR_LLM_AUTH_TOKEN" ]]; then
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          else
+            echo '::notice::OpenCodeReview skipped because OCR_LLM_AUTH_TOKEN is missing.'
+          fi
+
+      - name: Review pull request
+        id: ocr
+        if: steps.configuration.outputs.ready == 'true'
+        uses: alibaba/open-code-review@e74f2c6bd4422bd1e12d257d1725bcce1d6b9ddd # v1.14.2
+        with:
+          pr_number: ${{ steps.pr.outputs.number }}
+          base_ref: main
+          head_sha: ${{ steps.pr.outputs.head }}
+          ocr_version: '1.14.2'
+          llm_url: https://api.openai.com/v1
+          llm_auth_token: ${{ secrets.OCR_LLM_AUTH_TOKEN }}
+          llm_model: gpt-6.1-terra
+          llm_use_anthropic: 'false'
+          llm_protocol: openai-responses
+          llm_extra_body: '{"reasoning":{"effort":"high"}}'
+          effort: high
+          max_tokens_budget: '200000'
+          review_concurrency: '2'
+          review_task_timeout: '12'
+          upload_artifacts: 'false'
+          sticky_summary: 'true'
+          incremental: 'true'
+          resolve_outdated: 'false'
+
+      - name: Record posted summary
+        if: steps.configuration.outputs.ready == 'true'
+        shell: bash
+        env:
+          OCR_SUMMARY_URL: ${{ steps.ocr.outputs.summary_comment_url }}
+        run: |
+          if [[ -z "$OCR_SUMMARY_URL" ]]; then
+            echo '::error::OpenCodeReview completed without a PR summary URL.'
+            exit 1
+          fi
+          printf 'OpenCodeReview summary URL: %s\n' "$OCR_SUMMARY_URL" >> "$GITHUB_STEP_SUMMARY"
